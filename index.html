@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
     <script src="./app.js" defer></script>
+    <script src="./manual-input.js" defer></script>
   </head>
   <body>
     <main class="app-shell">
@@ -17,7 +18,7 @@
             <span class="brand-mark">G2</span>
             <div>
               <h1>연차평가 그래프</h1>
-              <p>엑셀 파일을 업로드하면 브라우저에서 보고서용 그래프를 생성합니다.</p>
+              <p>엑셀 파일을 업로드하거나 표에 직접 입력해서 그래프를 생성합니다.</p>
             </div>
           </div>
 
@@ -26,6 +27,14 @@
             <span class="drop-title">엑셀 파일 선택</span>
             <span id="fileName" class="drop-meta">.xlsx, .xls, .csv 지원</span>
           </label>
+
+          <div class="field">
+            <label for="dataSource">데이터 출처</label>
+            <select id="dataSource">
+              <option value="manual">직접 입력</option>
+              <option value="file">엑셀 파일</option>
+            </select>
+          </div>
 
           <div class="field">
             <label for="sheetSelect">시트</label>
@@ -66,7 +75,7 @@
           </div>
 
           <div class="button-row">
-            <button id="generateBtn" type="button" disabled>그래프 생성</button>
+            <button id="generateBtn" type="button">그래프 생성</button>
             <button id="clearBtn" type="button" class="secondary">초기화</button>
           </div>
 
@@ -77,7 +86,7 @@
           <header class="topbar">
             <div>
               <h2 id="reportTitle">그래프 미리보기</h2>
-              <p id="reportMeta">엑셀의 첫 행은 제목/라벨, 첫 열은 항목명으로 인식합니다.</p>
+              <p id="reportMeta">A1은 제목, B1 이후는 라벨, A2 이후는 항목명으로 인식합니다.</p>
             </div>
             <div class="topbar-actions">
               <button id="selectAllBtn" type="button" class="secondary" disabled>전체 선택</button>
@@ -85,10 +94,27 @@
             </div>
           </header>
 
+          <section class="data-editor-card" aria-label="직접 입력 데이터 표">
+            <div class="data-editor-header">
+              <div>
+                <h3>직접 입력 표</h3>
+                <p>A1 제목, B1 이후 라벨, A2 이후 항목명, 나머지 칸에는 값을 입력하세요.</p>
+              </div>
+              <div class="data-editor-actions">
+                <button id="addRowBtn" type="button" class="secondary">행 추가</button>
+                <button id="addColBtn" type="button" class="secondary">열 추가</button>
+                <button id="sampleDataBtn" type="button" class="secondary">예시 입력</button>
+              </div>
+            </div>
+            <div class="sheet-scroll">
+              <table id="manualTable" class="manual-table"></table>
+            </div>
+          </section>
+
           <div id="summary" class="summary-grid" aria-live="polite"></div>
           <div id="chartGrid" class="chart-grid"></div>
           <div id="emptyState" class="empty-state">
-            <strong>파일을 올리면 이곳에 그래프가 나타납니다.</strong>
+            <strong>파일을 올리거나 표에 입력하면 이곳에 그래프가 나타납니다.</strong>
             <span>기존 Python 스크립트의 10개 그룹, 40개 변형을 브라우저용으로 재구성했습니다.</span>
           </div>
         </section>
