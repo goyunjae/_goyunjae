@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>연차평가 보고서 그래프 생성기</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <aside class="panel controls" aria-label="그래프 생성 설정">
+          <div class="brand">
+            <span class="brand-mark">G2</span>
+            <div>
+              <h1>연차평가 그래프</h1>
+              <p>엑셀 파일을 업로드하면 브라우저에서 보고서용 그래프를 생성합니다.</p>
+            </div>
+          </div>
+
+          <label class="drop-zone" for="fileInput">
+            <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+            <span class="drop-title">엑셀 파일 선택</span>
+            <span id="fileName" class="drop-meta">.xlsx, .xls, .csv 지원</span>
+          </label>
+
+          <div class="field">
+            <label for="sheetSelect">시트</label>
+            <select id="sheetSelect" disabled>
+              <option>파일을 먼저 선택하세요</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="chartGroup">그래프 종류</label>
+            <select id="chartGroup">
+              <option value="ALL">전체</option>
+              <option value="BAR">BAR</option>
+              <option value="LINE">LINE</option>
+              <option value="AREA">AREA</option>
+              <option value="SCATTER">SCATTER</option>
+              <option value="PIE">PIE</option>
+              <option value="HEATMAP">HEATMAP</option>
+              <option value="RANGE">RANGE</option>
+              <option value="ICON">ICON</option>
+              <option value="TREEMAP">TREEMAP</option>
+              <option value="DOT">DOT</option>
+            </select>
+          </div>
+
+          <div class="field two-col">
+            <label for="exportFormat">저장 형식</label>
+            <select id="exportFormat">
+              <option value="jpg">JPG</option>
+              <option value="png">PNG</option>
+              <option value="svg">SVG</option>
+            </select>
+          </div>
+
+          <div class="field two-col">
+            <label for="dpiInput">출력 DPI</label>
+            <input id="dpiInput" type="number" min="72" max="1200" step="1" value="300" inputmode="numeric" />
+          </div>
+
+          <div class="button-row">
+            <button id="generateBtn" type="button" disabled>그래프 생성</button>
+            <button id="clearBtn" type="button" class="secondary">초기화</button>
+          </div>
+
+          <div id="status" class="status" role="status">대기 중</div>
+        </aside>
+
+        <section class="content">
+          <header class="topbar">
+            <div>
+              <h2 id="reportTitle">그래프 미리보기</h2>
+              <p id="reportMeta">엑셀의 첫 행은 제목/라벨, 첫 열은 항목명으로 인식합니다.</p>
+            </div>
+            <div class="topbar-actions">
+              <button id="selectAllBtn" type="button" class="secondary" disabled>전체 선택</button>
+              <button id="downloadAllBtn" type="button" class="secondary" disabled>선택 그래프 저장</button>
+            </div>
+          </header>
+
+          <div id="summary" class="summary-grid" aria-live="polite"></div>
+          <div id="chartGrid" class="chart-grid"></div>
+          <div id="emptyState" class="empty-state">
+            <strong>파일을 올리면 이곳에 그래프가 나타납니다.</strong>
+            <span>기존 Python 스크립트의 10개 그룹, 40개 변형을 브라우저용으로 재구성했습니다.</span>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
