@@ -43,6 +43,7 @@ input {
 
 .panel,
 .topbar,
+.data-editor-card,
 .chart-card,
 .summary-card {
   background: var(--panel);
@@ -214,6 +215,102 @@ button:disabled {
   margin-bottom: 14px;
 }
 
+.data-editor-card {
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.data-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-editor-header h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.data-editor-header p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.data-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.data-editor-actions button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.sheet-scroll {
+  overflow: auto;
+  max-height: 360px;
+}
+
+.manual-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.manual-table th,
+.manual-table td {
+  border: 1px solid var(--line);
+}
+
+.manual-table th {
+  min-width: 42px;
+  height: 32px;
+  background: #eef3f7;
+  color: #536273;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.manual-table td:first-child,
+.manual-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.manual-table td:first-child {
+  background: #f8fbfd;
+  color: #536273;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.manual-table input {
+  width: 130px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 8px;
+  background: white;
+  color: var(--ink);
+}
+
+.manual-table tr:nth-child(2) input,
+.manual-table tr td:nth-child(2) input {
+  font-weight: 700;
+}
+
 .summary-card {
   border-radius: 8px;
   padding: 12px;
@@ -327,6 +424,15 @@ button:disabled {
   }
 
   .topbar-actions button {
+    flex: 1;
+  }
+
+  .data-editor-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-editor-actions button {
     flex: 1;
   }
 }
