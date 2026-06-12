@@ -1,12 +1,18 @@
 (function () {
   let selectedCard = null;
 
-  window.addEventListener("DOMContentLoaded", () => {
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+
+  function boot() {
     simplifyTemplatePicker();
     installSelectedChartEditor();
     setTimeout(simplifyTemplatePicker, 200);
     setTimeout(simplifyTemplatePicker, 900);
-  });
+  }
 
   function simplifyTemplatePicker() {
     document.querySelectorAll(".premium-presets").forEach((panel) => panel.remove());
