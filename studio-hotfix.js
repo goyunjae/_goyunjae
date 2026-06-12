@@ -1,9 +1,28 @@
 (function () {
   window.addEventListener("DOMContentLoaded", () => {
+    installAllFilterFix();
     installMapGuard();
     installMapApplyOverride();
+    installTextThemeFix();
     injectPanelRefresh();
   });
+
+  function installAllFilterFix() {
+    document.addEventListener("click", (event) => {
+      const chip = event.target.closest?.(".filter-chip");
+      if (!chip || chip.dataset.value !== "__ALL__") return;
+      const select = document.querySelector("#chartGroup");
+      if (!select) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const allOption = Array.from(select.options).find((option) => option.value === "__ALL__");
+      select.value = allOption ? "__ALL__" : "";
+      document.querySelectorAll(".filter-chip").forEach((item) => {
+        item.classList.toggle("active", item === chip || item.dataset.value === "__ALL__");
+      });
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }, true);
+  }
 
   function installMapGuard() {
     if (!window.Plotly || window.Plotly.__studioMapGuard) return;
@@ -40,6 +59,51 @@
       safeApplyMap();
     }, true);
     document.querySelector("#mapReset")?.addEventListener("click", resetMap);
+  }
+
+  function installTextThemeFix() {
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest?.(".theme-icon")) return;
+      setTimeout(applyTextChartColors, 250);
+      setTimeout(applyTextChartColors, 900);
+    }, true);
+
+    const grid = document.querySelector("#chartGrid");
+    if (grid) {
+      new MutationObserver(() => setTimeout(applyTextChartColors, 250)).observe(grid, { childList: true, subtree: true });
+    }
+    setTimeout(applyTextChartColors, 600);
+  }
+
+  function applyTextChartColors() {
+    if (!window.Plotly) return;
+    const colors = activeThemeColors();
+    document.querySelectorAll(".chart-card").forEach((card) => {
+      const title = card.querySelector(".chart-card-header h3")?.textContent || "";
+      const plot = card.querySelector(".plot");
+      if (!plot?.data) return;
+      plot.data.forEach((trace, traceIndex) => {
+        const mode = String(trace.mode || "");
+        const isTextTrace = title.includes("TEXT") || trace.type === "scatter" && mode.includes("text") && !mode.includes("markers");
+        if (!isTextTrace) return;
+        const count = Array.isArray(trace.text) ? trace.text.length : Array.isArray(trace.x) ? trace.x.length : 1;
+        const color = Array.from({ length: count }, (_, index) => colors[index % colors.length]);
+        const size = Array.isArray(trace.textfont?.size) ? trace.textfont.size : trace.textfont?.size || 16;
+        try {
+          window.Plotly.restyle(plot, {
+            textfont: [{ ...(trace.textfont || {}), size, color }],
+          }, [traceIndex]);
+        } catch (_) {}
+      });
+    });
+  }
+
+  function activeThemeColors() {
+    const active = document.querySelector(".theme-icon.active") || document.querySelector(".theme-icon");
+    const colors = Array.from(active?.querySelectorAll("span") || [])
+      .map((span) => span.style.backgroundColor)
+      .filter(Boolean);
+    return colors.length ? colors : ["#45B8AC", "#B8E6A3", "#2F95B8", "#2D64A8"];
   }
 
   function safeApplyMap() {
