@@ -58,10 +58,11 @@ clearBtn.addEventListener("click", resetApp);
 downloadAllBtn.addEventListener("click", downloadAll);
 selectAllBtn.addEventListener("click", toggleSelectAll);
 sheetSelect.addEventListener("change", () => {
-  if (workbook) generateSelected();
+  clearChartOutput("시트를 선택했습니다. 그래프 종류를 고른 뒤 그래프 생성을 누르세요.");
 });
-chartGroup.addEventListener("change", () => {
-  if (currentData) renderCharts(currentData);
+chartGroup.addEventListener("change", handleChartGroupChange, true);
+window.addEventListener("DOMContentLoaded", () => {
+  setTimeout(syncChartGroupOptions, 0);
 });
 
 async function handleFile(event) {
@@ -83,7 +84,8 @@ async function handleFile(event) {
     });
     sheetSelect.disabled = false;
     generateBtn.disabled = false;
-    generateSelected();
+    currentData = null;
+    clearChartOutput("파일을 읽었습니다. 그래프 종류를 고른 뒤 그래프 생성을 누르세요.");
   } catch (error) {
     setStatus(`파일을 읽지 못했습니다: ${error.message}`, true);
   }
@@ -91,6 +93,11 @@ async function handleFile(event) {
 
 function generateSelected() {
   if (!workbook) return;
+  syncChartGroupOptions();
+  if (!chartGroup.value) {
+    clearChartOutput("그래프 종류를 먼저 선택하세요.", true);
+    return;
+  }
   const sheetName = sheetSelect.value || workbook.SheetNames[0];
   try {
     currentData = readChartSheet(workbook, sheetName);
@@ -170,12 +177,22 @@ function updateSummary(data) {
 }
 
 function renderCharts(data) {
+  syncChartGroupOptions();
+  const selected = chartGroup.value;
+  if (!selected) {
+    clearChartOutput("그래프 종류를 먼저 선택하세요.", true);
+    return;
+  }
+
   chartGrid.innerHTML = "";
   renderedCharts = [];
   emptyState.classList.add("hidden");
 
-  const selected = chartGroup.value;
-  const specs = chartSpecs().filter((spec) => selected === "ALL" || spec.group === selected);
+  const specs = uniqueChartSpecs().filter((spec) => spec.group === selected);
+  if (specs.length === 0) {
+    clearChartOutput(`${selected} 타입에 생성할 그래프가 없습니다.`, true);
+    return;
+  }
 
   specs.forEach((spec) => {
     const card = document.createElement("article");
@@ -208,6 +225,55 @@ function renderCharts(data) {
 
   updateDownloadButtons();
   setStatus(`${data.sheetName}에서 그래프 ${renderedCharts.length}개를 생성했습니다.`);
+}
+
+function handleChartGroupChange(event) {
+  event.stopImmediatePropagation();
+  if (currentData) {
+    clearChartOutput("그래프 종류를 변경했습니다. 그래프 생성을 눌러 다시 만드세요.");
+  } else {
+    clearChartOutput("그래프 종류를 선택했습니다. 그래프 생성을 누르세요.");
+  }
+}
+
+function syncChartGroupOptions() {
+  const selected = chartGroup.value;
+  const groups = [...new Set(uniqueChartSpecs().map((item) => item.group))];
+  chartGroup.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "그래프 종류 선택";
+  chartGroup.appendChild(placeholder);
+
+  groups.forEach((group) => {
+    const option = document.createElement("option");
+    option.value = group;
+    option.textContent = group;
+    chartGroup.appendChild(option);
+  });
+
+  chartGroup.value = groups.includes(selected) ? selected : "";
+}
+
+function uniqueChartSpecs() {
+  const seen = new Set();
+  return chartSpecs().filter((item) => {
+    const key = `${item.group}:${item.number}:${item.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function clearChartOutput(message, isError = false) {
+  chartGrid.innerHTML = "";
+  renderedCharts = [];
+  emptyState.classList.remove("hidden");
+  downloadAllBtn.disabled = true;
+  selectAllBtn.disabled = true;
+  updateDownloadButtons();
+  setStatus(message, isError);
 }
 
 function chartSpecs() {
@@ -678,7 +744,7 @@ function updateDownloadButtons() {
   const selectedCount = renderedCharts.filter((record) => record.checkbox.checked).length;
   downloadAllBtn.disabled = selectedCount === 0;
   selectAllBtn.disabled = renderedCharts.length === 0;
-  selectAllBtn.textContent = selectedCount === renderedCharts.length ? "전체 해제" : "전체 선택";
+  selectAllBtn.textContent = renderedCharts.length > 0 && selectedCount === renderedCharts.length ? "전체 해제" : "전체 선택";
   downloadAllBtn.textContent = selectedCount > 0 ? `선택 ${selectedCount}개 저장` : "선택 그래프 저장";
 }
 
