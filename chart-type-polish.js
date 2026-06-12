@@ -101,23 +101,36 @@
     const next = { ...trace };
     const baseColor = palette[index % palette.length];
     if (next.type === "bar" || next.type === "waterfall" || next.type === "barpolar") {
-      next.marker = { ...(next.marker || {}), color: next.marker?.color || baseColor, line: { color: "#ffffff", width: 1, ...(next.marker?.line || {}) } };
+      next.marker = { ...(next.marker || {}), color: traceColors(next, index), line: { color: "#ffffff", width: 1, ...(next.marker?.line || {}) } };
     }
     if (next.type === "scatter" || next.type === "scatterpolar") {
-      next.line = { ...(next.line || {}), color: next.line?.color || baseColor, width: next.line?.width || 2.4 };
-      next.marker = { ...(next.marker || {}), color: next.marker?.color || baseColor, size: next.marker?.size || 9, line: { color: "#ffffff", width: 1, ...(next.marker?.line || {}) } };
+      next.line = { ...(next.line || {}), color: baseColor, width: next.line?.width || 2.4 };
+      next.marker = { ...(next.marker || {}), color: traceColors(next, index), size: next.marker?.size || 9, line: { color: "#ffffff", width: 1, ...(next.marker?.line || {}) } };
     }
     if (next.type === "pie") {
-      next.marker = { ...(next.marker || {}), colors: next.marker?.colors || palette, line: { color: "#ffffff", width: 2, ...(next.marker?.line || {}) } };
+      next.marker = { ...(next.marker || {}), colors: pieColors(next.marker?.colors), line: { color: "#ffffff", width: 2, ...(next.marker?.line || {}) } };
       next.textinfo = next.textinfo || "label+percent";
     }
     if (next.type === "heatmap") {
       next.colorscale = [[0, "#F7FCFB"], [0.35, "#DDF3EC"], [0.7, "#8FD6C8"], [1, "#2F95B8"]];
     }
     if (next.type === "indicator" && next.gauge) {
-      next.gauge = { ...next.gauge, bar: { color: baseColor, ...(next.gauge.bar || {}) }, bgcolor: "#F4FAF8" };
+      next.gauge = { ...next.gauge, bar: { ...(next.gauge.bar || {}), color: baseColor }, bgcolor: "#F4FAF8" };
     }
     return next;
+  }
+
+  function traceColors(trace, index) {
+    const count = Array.isArray(trace.x) ? trace.x.length : Array.isArray(trace.y) ? trace.y.length : 0;
+    if (count > 1 && Array.isArray(trace.marker?.color)) {
+      return trace.marker.color.map((_, colorIndex) => palette[(index + colorIndex) % palette.length]);
+    }
+    return palette[index % palette.length];
+  }
+
+  function pieColors(colors) {
+    if (!Array.isArray(colors)) return palette;
+    return colors.map((color, index) => String(color).includes("rgba(0,0,0,0)") ? color : palette[index % palette.length]);
   }
 
   function axis(axisLayout = {}) {
