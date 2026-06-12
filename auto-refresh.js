@@ -1,7 +1,7 @@
 (function () {
   if (window.__studioFinalLoader) return;
   window.__studioFinalLoader = true;
-  const src = "./studio-final.js?v=20260612-1645";
+  const src = "./studio-final.js?v=20260612-1725";
   if (!Array.from(document.scripts).some((script) => script.src.includes("studio-final.js"))) {
     const script = document.createElement("script");
     script.src = src;
