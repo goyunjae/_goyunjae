@@ -73,6 +73,20 @@
       spec(8, "Gauge Cards", gaugeCards),
       spec(9, "Up Down Bars", upDownBars),
       spec(10, "Scorecard Table", scorecardTable),
+      spec(11, "Floating Waterfall", floatingWaterfall),
+      spec(12, "Mosaic Stack", mosaicStack),
+      spec(13, "Radial Fan", radialFan),
+      spec(14, "Polar Stack", polarStack),
+      spec(15, "Growth Arrow Bars", growthArrowBars),
+      spec(16, "Process Chevrons", processChevrons),
+      spec(17, "Radial Rings", radialRings),
+      spec(18, "Split Hexagons", splitHexagons),
+      spec(19, "Cycle Bubbles", cycleBubbles),
+      spec(20, "Half Pie Callouts", halfPieCallouts),
+      spec(21, "Profile Lines", profileLines),
+      spec(22, "Alluvial Before After", alluvialBeforeAfter),
+      spec(23, "Layered Gantt", layeredGantt),
+      spec(24, "Roadmap Swimlane", roadmapSwimlane),
     ];
   };
 
@@ -272,6 +286,277 @@
     return {
       traces: [{ type: "table", header: { values: ["Rank", "Item", "Total"], fill: { color: ink }, font: { color: "#ffffff", size: 12 }, align: "center" }, cells: { values: [totals.map((_, i) => i + 1), totals.map((d) => d.name), totals.map((d) => formatNumber(d.value))], fill: { color: totals.map((_, i) => i % 2 ? "#F6F8FC" : "#FFFFFF") }, font: { color: ink, size: 12 }, align: "center", height: 30 } }],
       layout: { margin: { l: 20, r: 20, t: 58, b: 20 } },
+    };
+  }
+
+  function floatingWaterfall(data) {
+    const totals = labelTotals(data);
+    const measures = totals.map((_, index) => index === 0 || index === totals.length - 1 ? "total" : "relative");
+    return {
+      traces: [{
+        type: "waterfall",
+        x: totals.map((d) => d.name),
+        y: totals.map((d) => d.value),
+        measure: measures,
+        text: totals.map((d) => formatNumber(d.value)),
+        textposition: "inside",
+        connector: { line: { color: "#7A858F", width: 1 } },
+        decreasing: { marker: { color: "#E84A5F" } },
+        increasing: { marker: { color: "#7BC7B6" } },
+        totals: { marker: { color: "#BFE7AE" } },
+      }],
+      layout: { yaxis: { title: "Value" }, showlegend: false, margin: { l: 70, r: 30, b: 100 } },
+    };
+  }
+
+  function mosaicStack(data) {
+    const labelTotalsList = labelTotals(data);
+    const grand = labelTotalsList.reduce((sum, item) => sum + item.value, 0) || 1;
+    let left = 0;
+    const x = [];
+    const widths = [];
+    data.labels.forEach((label, index) => {
+      const width = Math.max((labelTotalsList[index]?.value || 0) / grand, 0.04);
+      x.push(left + width / 2);
+      widths.push(width);
+      left += width;
+    });
+    const traces = data.series.map((series, seriesIndex) => ({
+      type: "bar",
+      x,
+      y: data.labels.map((_, labelIndex) => {
+        const total = labelTotalsList[labelIndex]?.value || 1;
+        return (data.values[seriesIndex][labelIndex] || 0) / total * 100;
+      }),
+      width: widths,
+      name: series,
+      text: data.labels.map((_, labelIndex) => formatNumber(data.values[seriesIndex][labelIndex] || 0)),
+      textposition: "inside",
+      marker: { color: palette[seriesIndex % palette.length], line: { color: "#ffffff", width: 1 } },
+    }));
+    return {
+      traces,
+      layout: {
+        barmode: "stack",
+        xaxis: { tickvals: x, ticktext: data.labels, range: [0, 1], title: "Share by category" },
+        yaxis: { range: [0, 100], ticksuffix: "%", title: "Composition" },
+        margin: { l: 70, r: 30, b: 90 },
+      },
+    };
+  }
+
+  function radialFan(data) {
+    const totals = labelTotals(data).slice(0, 8);
+    const start = -120;
+    const span = 240;
+    return {
+      traces: [{
+        type: "barpolar",
+        r: totals.map((d) => d.value),
+        theta: totals.map((_, i) => start + (span / Math.max(totals.length - 1, 1)) * i),
+        width: Math.max(16, span / Math.max(totals.length, 1) * 0.75),
+        text: totals.map((d) => `${d.name}: ${formatNumber(d.value)}`),
+        marker: { color: totals.map((_, i) => palette[i % palette.length]), line: { color: "#ffffff", width: 2 } },
+      }],
+      layout: { polar: { radialaxis: { visible: false }, angularaxis: { visible: false } }, showlegend: false, margin: { l: 20, r: 20, t: 60, b: 20 } },
+    };
+  }
+
+  function polarStack(data) {
+    const labels = data.labels.slice(0, 12);
+    const traces = data.series.map((series, seriesIndex) => ({
+      type: "barpolar",
+      r: labels.map((_, labelIndex) => data.values[seriesIndex][labelIndex] || 0),
+      theta: labels.map((_, labelIndex) => labelIndex * 360 / labels.length),
+      width: 360 / labels.length * 0.72,
+      name: series,
+      marker: { color: palette[seriesIndex % palette.length], line: { color: "#ffffff", width: 1 } },
+    }));
+    return {
+      traces,
+      layout: {
+        polar: { angularaxis: { tickvals: labels.map((_, i) => i * 360 / labels.length), ticktext: labels }, radialaxis: { visible: false } },
+        barmode: "stack",
+        margin: { l: 30, r: 30, t: 60, b: 30 },
+      },
+    };
+  }
+
+  function growthArrowBars(data) {
+    const totals = labelTotals(data);
+    const annotations = totals.slice(1).map((item, index) => {
+      const previous = totals[index]?.value || 1;
+      const change = (item.value - previous) / Math.abs(previous) * 100;
+      return {
+        x: item.name,
+        y: item.value,
+        text: `${change >= 0 ? "+" : ""}${change.toFixed(0)}%`,
+        showarrow: true,
+        arrowhead: 2,
+        ax: -42,
+        ay: change >= 0 ? 42 : -42,
+        arrowcolor: "#C4123F",
+        font: { color: "#C4123F", size: 12 },
+      };
+    });
+    return {
+      traces: [{ type: "bar", x: totals.map((d) => d.name), y: totals.map((d) => d.value), text: totals.map((d) => formatNumber(d.value)), textposition: "outside", marker: { color: totals.map((_, i) => palette[i % palette.length]) } }],
+      layout: { annotations, yaxis: { title: "Value" }, showlegend: false, margin: { l: 60, r: 30, b: 90 } },
+    };
+  }
+
+  function processChevrons(data) {
+    const totals = labelTotals(data).slice(0, 6);
+    const shapes = [];
+    const annotations = [];
+    const step = 1 / Math.max(totals.length, 1);
+    totals.forEach((item, index) => {
+      const x0 = index * step + 0.02;
+      const x1 = (index + 1) * step - 0.01;
+      const notch = Math.min(0.035, step * 0.22);
+      shapes.push({
+        type: "path",
+        xref: "paper",
+        yref: "paper",
+        path: `M ${x0},0.56 L ${x1 - notch},0.56 L ${x1},0.64 L ${x1 - notch},0.72 L ${x0},0.72 L ${x0 + notch},0.64 Z`,
+        fillcolor: palette[index % palette.length],
+        line: { color: "#ffffff", width: 2 },
+      });
+      annotations.push({ xref: "paper", yref: "paper", x: (x0 + x1) / 2, y: 0.64, text: `<b>${item.name}</b>`, showarrow: false, font: { color: "#ffffff", size: 13 } });
+      annotations.push({ xref: "paper", yref: "paper", x: (x0 + x1) / 2, y: 0.46, text: formatNumber(item.value), showarrow: false, font: { color: "#5E6C84", size: 12 } });
+    });
+    return { traces: [{ type: "scatter", x: [0], y: [0], mode: "markers", marker: { opacity: 0 }, showlegend: false }], layout: blankShapeLayout(shapes, annotations) };
+  }
+
+  function radialRings(data) {
+    const totals = labelTotals(data).slice(0, 5);
+    const max = safeMax(totals.map((d) => d.value));
+    return {
+      traces: totals.map((item, index) => ({
+        type: "barpolar",
+        r: [0.72],
+        theta: [item.value / max * 300 / 2],
+        width: [item.value / max * 300],
+        base: index + 1,
+        name: item.name,
+        text: `${item.name}: ${formatNumber(item.value)}`,
+        marker: { color: palette[index % palette.length], line: { color: "#ffffff", width: 2 } },
+      })),
+      layout: { polar: { radialaxis: { visible: false, range: [0, totals.length + 1.5] }, angularaxis: { visible: false, rotation: 90 } }, showlegend: true, margin: { l: 20, r: 20, t: 60, b: 20 } },
+    };
+  }
+
+  function splitHexagons(data) {
+    const totals = labelTotals(data).slice(0, 6);
+    const shapes = [];
+    const annotations = [];
+    totals.forEach((item, index) => {
+      const x = 0.12 + index * 0.15;
+      const y = 0.55;
+      const w = 0.055;
+      const h = 0.16;
+      shapes.push({ type: "path", xref: "paper", yref: "paper", path: `M ${x},${y + h} L ${x + w},${y + h * 0.5} L ${x + w},${y} L ${x},${y - h * 0.5} L ${x - w},${y} L ${x - w},${y + h * 0.5} Z`, fillcolor: palette[index % palette.length], opacity: 0.88, line: { color: "#ffffff", width: 2 } });
+      shapes.push({ type: "line", xref: "paper", yref: "paper", x0: x - w, x1: x + w, y0: y + h * 0.22, y1: y + h * 0.22, line: { color: "#ffffff", width: 2 } });
+      annotations.push({ xref: "paper", yref: "paper", x, y: y + h * 0.38, text: formatNumber(item.value), showarrow: false, font: { color: "#ffffff", size: 13 } });
+      annotations.push({ xref: "paper", yref: "paper", x, y: y - h * 0.38, text: item.name, showarrow: false, font: { color: "#5E6C84", size: 11 } });
+    });
+    return { traces: [{ type: "scatter", x: [0], y: [0], mode: "markers", marker: { opacity: 0 }, showlegend: false }], layout: blankShapeLayout(shapes, annotations) };
+  }
+
+  function cycleBubbles(data) {
+    const totals = labelTotals(data).slice(0, 8);
+    const shapes = [];
+    const annotations = [];
+    totals.forEach((item, index) => {
+      const angle = Math.PI * 2 * index / Math.max(totals.length, 1) - Math.PI / 2;
+      const x = 0.5 + Math.cos(angle) * 0.28;
+      const y = 0.52 + Math.sin(angle) * 0.3;
+      shapes.push({ type: "circle", xref: "paper", yref: "paper", x0: x - 0.07, x1: x + 0.07, y0: y - 0.07, y1: y + 0.07, fillcolor: palette[index % palette.length], line: { color: "#ffffff", width: 2 } });
+      annotations.push({ xref: "paper", yref: "paper", x, y, text: `<b>${item.name}</b><br>${formatNumber(item.value)}`, showarrow: false, font: { color: "#ffffff", size: 11 } });
+    });
+    return { traces: [{ type: "scatter", x: [0], y: [0], mode: "markers", marker: { opacity: 0 }, showlegend: false }], layout: blankShapeLayout(shapes, annotations) };
+  }
+
+  function halfPieCallouts(data) {
+    const totals = seriesTotals(data).slice(0, 6);
+    const values = totals.map((d) => d.value);
+    const labels = totals.map((d) => d.name);
+    return {
+      traces: [{ type: "pie", labels: [...labels, ""], values: [...values, values.reduce((sum, value) => sum + value, 0)], hole: 0, rotation: 90, direction: "clockwise", sort: false, textinfo: "label+percent", textposition: "outside", marker: { colors: [...palette, "rgba(0,0,0,0)"], line: { color: "#ffffff", width: 2 } } }],
+      layout: { showlegend: false, margin: { l: 30, r: 30, t: 60, b: 30 } },
+    };
+  }
+
+  function profileLines(data) {
+    const traces = data.series.slice(0, 4).map((series, index) => ({
+      type: "scatter",
+      mode: "lines+markers",
+      x: data.values[index],
+      y: data.labels,
+      name: series,
+      line: { color: palette[index % palette.length], width: 2 },
+      marker: { color: palette[index % palette.length], size: 9 },
+    }));
+    return { traces, layout: { xaxis: { title: "Low to high" }, margin: { l: 150, r: 30, b: 80 } } };
+  }
+
+  function alluvialBeforeAfter(data) {
+    const points = data.series.map((series, index) => ({ series, source: data.values[index][0] || 0, target: data.values[index][data.labels.length - 1] || 0 })).filter((d) => d.source || d.target);
+    return {
+      traces: [{
+        type: "sankey",
+        arrangement: "fixed",
+        node: { label: ["Before", "After", ...points.map((d) => d.series)], x: [0.05, 0.95, ...points.map(() => 0.5)], y: [0.1, 0.1, ...points.map((_, i) => 0.2 + i * 0.08)], pad: 12, thickness: 16, color: ["#2F6BFF", "#00A78E", ...points.map((_, i) => palette[i % palette.length])] },
+        link: { source: [...points.map(() => 0), ...points.map((_, i) => i + 2)], target: [...points.map((_, i) => i + 2), ...points.map(() => 1)], value: [...points.map((d) => Math.max(d.source, 1)), ...points.map((d) => Math.max(d.target, 1))], color: [...points.map((_, i) => `${palette[i % palette.length]}55`), ...points.map((_, i) => `${palette[i % palette.length]}77`)] },
+      }],
+      layout: { margin: { l: 30, r: 30, t: 60, b: 30 } },
+    };
+  }
+
+  function layeredGantt(data) {
+    const totals = seriesTotals(data).slice(0, 8);
+    const traces = [{
+      type: "bar",
+      orientation: "h",
+      y: totals.map((d) => d.name),
+      x: totals.map((d) => Math.max(d.value, 1)),
+      base: totals.map((_, i) => i * 0.8),
+      marker: { color: totals.map((_, i) => palette[i % palette.length]) },
+      text: totals.map((d) => formatNumber(d.value)),
+      textposition: "inside",
+      showlegend: false,
+    }];
+    return { traces, layout: { xaxis: { title: "Timeline units" }, yaxis: { autorange: "reversed" }, margin: { l: 130, r: 30, b: 80 } } };
+  }
+
+  function roadmapSwimlane(data) {
+    const labels = data.labels.slice(0, 6);
+    const shapes = [];
+    const annotations = [];
+    const rowHeight = 0.12;
+    data.series.slice(0, 4).forEach((series, row) => {
+      const y = 0.74 - row * 0.16;
+      annotations.push({ xref: "paper", yref: "paper", x: 0.04, y, text: `<b>${series}</b>`, showarrow: false, xanchor: "left", font: { color: "#5E6C84", size: 11 } });
+      labels.forEach((label, index) => {
+        const value = data.values[row][index] || 0;
+        if (value <= 0) return;
+        const x0 = 0.18 + index * 0.12;
+        const x1 = Math.min(0.92, x0 + 0.08 + value / safeMax(data.values.flat()) * 0.12);
+        shapes.push({ type: "rect", xref: "paper", yref: "paper", x0, x1, y0: y - rowHeight / 2, y1: y + rowHeight / 2, fillcolor: palette[(row + index) % palette.length], line: { color: "#ffffff", width: 1 } });
+      });
+    });
+    labels.forEach((label, index) => annotations.push({ xref: "paper", yref: "paper", x: 0.2 + index * 0.12, y: 0.92, text: label, showarrow: false, font: { color: "#5E6C84", size: 10 } }));
+    return { traces: [{ type: "scatter", x: [0], y: [0], mode: "markers", marker: { opacity: 0 }, showlegend: false }], layout: blankShapeLayout(shapes, annotations) };
+  }
+
+  function blankShapeLayout(shapes, annotations) {
+    return {
+      shapes,
+      annotations,
+      xaxis: { visible: false, range: [0, 1] },
+      yaxis: { visible: false, range: [0, 1] },
+      margin: { l: 20, r: 20, t: 50, b: 20 },
+      showlegend: false,
     };
   }
 }());
