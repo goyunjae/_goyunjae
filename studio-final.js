@@ -97,6 +97,7 @@
     const kind = chartKind(plot);
     panel.dataset.inspectorType = kind;
     tools.innerHTML = markup(kind, plot);
+    syncMapEditor(panel, kind);
     tools.querySelector("#applySelectedChart")?.addEventListener("click", applyChartEdits);
     if (kind === "geo") hydrateStationBox(plot);
   }
@@ -164,6 +165,24 @@
       return `${name},${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
     }).filter(Boolean);
     if (rows.length) box.value = rows.join("\n");
+  }
+
+  function syncMapEditor(panel, kind) {
+    const showMapTools = kind === "geo";
+    const mapHeading = Array.from(panel.querySelectorAll("h3")).find((heading) => (
+      heading.textContent.trim().toLowerCase() === "map editor"
+    ));
+    [
+      mapHeading,
+      panel.querySelector("#mapX")?.closest(".editor-grid-2"),
+      panel.querySelector("#mapZoom")?.closest(".editor-field"),
+      panel.querySelector("#stationCoords")?.closest(".editor-field"),
+      panel.querySelector("#mapApply"),
+      panel.querySelector("#mapReset"),
+      panel.querySelector(".editor-help"),
+    ].filter(Boolean).forEach((element) => {
+      element.style.display = showMapTools ? "" : "none";
+    });
   }
 
   function firstTraceValue(plot, key, fallback) {
