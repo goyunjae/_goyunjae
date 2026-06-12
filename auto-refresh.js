@@ -1,4 +1,16 @@
 (function () {
+  if (window.__studioFinalLoader) return;
+  window.__studioFinalLoader = true;
+  const src = "./studio-final.js?v=20260612-1635";
+  if (!Array.from(document.scripts).some((script) => script.src.includes("studio-final.js"))) {
+    const script = document.createElement("script");
+    script.src = src;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+}());
+
+(function () {
   window.addEventListener("DOMContentLoaded", () => {
     const manualTable = document.querySelector("#manualTable");
     const dataSource = document.querySelector("#dataSource");
