@@ -36,9 +36,14 @@ const baseLayout = {
   paper_bgcolor: "#ffffff",
   plot_bgcolor: "#ffffff",
   font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#1c2430" },
-  margin: { l: 58, r: 26, t: 58, b: 58 },
+  margin: { l: 58, r: 26, t: 58, b: 112 },
   colorway: PALETTE,
   legend: { orientation: "h", y: -0.22, x: 0, font: { size: 10 } },
+};
+
+const axisLayoutDefaults = {
+  xaxis: { tickangle: -90, automargin: true },
+  yaxis: { automargin: true },
 };
 
 const baseConfig = {
@@ -590,6 +595,8 @@ function mergeLayout(layout, title) {
     ...baseLayout,
     ...layout,
     title: { text: title, x: 0.02, xanchor: "left", font: { size: 15 } },
+    xaxis: { ...axisLayoutDefaults.xaxis, ...(layout.xaxis || {}) },
+    yaxis: { ...axisLayoutDefaults.yaxis, ...(layout.yaxis || {}) },
     margin: { ...baseLayout.margin, ...(layout.margin || {}) },
   };
 }
