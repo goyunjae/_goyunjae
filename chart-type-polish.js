@@ -26,11 +26,8 @@
     "Gauge Cards": ["RADIAL", "Gauge Cards"],
     "Radial Rings": ["RADIAL", "Radial Rings"],
     "Timeline Dots": ["TIMELINE", "Timeline Dots"],
-    "Layered Gantt": ["TIMELINE", "Layered Gantt"],
-    "Process Chevrons": ["PROCESS", "Process Chevrons"],
     "Profile Lines": ["LINE", "Profile Lines"],
     "Alluvial Before After": ["FLOW", "Alluvial Before After"],
-    "Scorecard Table": ["TABLE", "Scorecard Table"],
   };
 
   const wanted = [
@@ -58,10 +55,7 @@
     ["RADIAL", "Gauge Cards"],
     ["RADIAL", "Radial Rings"],
     ["TIMELINE", "Timeline Dots"],
-    ["TIMELINE", "Layered Gantt"],
-    ["PROCESS", "Process Chevrons"],
     ["FLOW", "Alluvial Before After"],
-    ["TABLE", "Scorecard Table"],
     ["TEXT", "Word Cloud"],
     ["GEO", "지역 지도"],
     ["GEO", "지도 버블"],
@@ -121,30 +115,32 @@
 
   function installThemePicker() {
     const anchor = document.querySelector("#chartGroup")?.closest(".field");
-    if (!anchor || document.querySelector("#themeSelect")) return;
+    if (!anchor || document.querySelector("#themeIcons")) return;
     const field = document.createElement("div");
     field.className = "field theme-field";
-    field.innerHTML = '<label for="themeSelect">색상 테마</label><select id="themeSelect"></select><div id="themeSwatches" class="theme-swatches" aria-hidden="true"></div>';
+    field.innerHTML = '<label>색상 테마</label><div id="themeIcons" class="theme-icons" role="list"></div>';
     anchor.insertAdjacentElement("afterend", field);
-    const select = field.querySelector("#themeSelect");
-    themes.forEach((item, index) => {
-      const option = document.createElement("option");
-      option.value = String(index);
-      option.textContent = item.name;
-      select.appendChild(option);
-    });
-    select.addEventListener("change", () => {
-      theme = themes[Number(select.value)] || themes[0];
-      renderSwatches();
-      if (document.querySelectorAll(".chart-card").length) document.querySelector("#generateBtn")?.click();
-    });
-    renderSwatches();
+    renderThemeIcons();
   }
 
-  function renderSwatches() {
-    const box = document.querySelector("#themeSwatches");
+  function renderThemeIcons() {
+    const box = document.querySelector("#themeIcons");
     if (!box) return;
-    box.innerHTML = theme.colors.map((color) => `<span style="background:${color}"></span>`).join("");
+    box.innerHTML = "";
+    themes.forEach((item, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `theme-icon${item === theme ? " active" : ""}`;
+      button.title = item.name;
+      button.setAttribute("aria-label", `${item.name} 색상 테마`);
+      button.innerHTML = item.colors.slice(0, 4).map((color) => `<span style="background:${color}"></span>`).join("");
+      button.addEventListener("click", () => {
+        theme = item;
+        renderThemeIcons();
+        if (document.querySelectorAll(".chart-card").length) document.querySelector("#generateBtn")?.click();
+      });
+      box.appendChild(button);
+    });
   }
 
   function cleanSelect() {
@@ -177,19 +173,27 @@
   function styleTrace(trace, index) {
     const next = { ...trace };
     const color = theme.colors[index % theme.colors.length];
+    const values = traceValues(next);
     if (["bar", "waterfall", "barpolar"].includes(next.type)) {
       next.marker = { ...(next.marker || {}), color: colorsFor(next, index), line: { color: "#ffffff", width: 1 } };
+      addValueText(next, values, next.orientation === "h" ? "outside" : "auto");
     }
     if (["scatter", "scatterpolar", "scattergeo"].includes(next.type)) {
       next.line = { ...(next.line || {}), color, width: next.line?.width || 2.4 };
       next.marker = { ...(next.marker || {}), color: colorsFor(next, index), size: next.marker?.size || 9, line: { color: "#ffffff", width: 1 } };
+      if (next.mode && !String(next.mode).includes("text")) next.mode = `${next.mode}+text`;
+      addValueText(next, values, next.type === "scattergeo" ? "top center" : "top center");
     }
     if (next.type === "pie") {
       next.marker = { ...(next.marker || {}), colors: pieColors(next.marker?.colors), line: { color: "#ffffff", width: 2 } };
-      next.textinfo = next.textinfo || "label+percent";
+      next.textinfo = "label+value+percent";
+      next.insidetextorientation = "radial";
     }
     if (next.type === "heatmap") {
       next.colorscale = [[0, "#F7FCFB"], [0.35, "#DDF3EC"], [0.7, theme.colors[1]], [1, theme.colors[0]]];
+      if (!next.text) next.text = Array.isArray(next.z) ? next.z.map((row) => row.map(format)) : undefined;
+      next.texttemplate = "%{text}";
+      next.textfont = { color: "#21313A", size: 11 };
     }
     if (next.type === "choropleth") {
       next.colorscale = [[0, "#F7FCFB"], [0.35, "#DDF3EC"], [0.7, theme.colors[1]], [1, theme.colors[0]]];
@@ -199,6 +203,20 @@
       next.gauge = { ...next.gauge, bar: { ...(next.gauge.bar || {}), color }, bgcolor: "#F4FAF8" };
     }
     return next;
+  }
+
+  function addValueText(trace, values, position) {
+    if (!values || values.length === 0) return;
+    trace.text = values.map(format);
+    trace.textposition = position;
+    trace.textfont = { color: "#21313A", size: 11, ...(trace.textfont || {}) };
+  }
+
+  function traceValues(trace) {
+    if (trace.type === "barpolar") return trace.r;
+    if (trace.type === "scattergeo") return trace.marker?.size;
+    if (trace.orientation === "h") return trace.x;
+    return trace.y || trace.r || trace.z;
   }
 
   function colorsFor(trace, index) {
@@ -237,12 +255,12 @@
         mode: "text",
         x: points.map((point) => point.x),
         y: points.map((point) => point.y),
-        text: words.map((item) => item.text),
+        text: words.map((item) => `${item.text}<br>${format(item.value)}`),
         textfont: {
           size: words.map((item) => 14 + (item.value / max) * 34),
           color: words.map((_, index) => theme.colors[index % theme.colors.length]),
         },
-        hovertext: words.map((item) => `${item.text}: ${Number(item.value).toLocaleString("ko-KR")}`),
+        hovertext: words.map((item) => `${item.text}: ${format(item.value)}`),
         hoverinfo: "text",
         showlegend: false,
       }],
@@ -272,6 +290,16 @@
           bgcolor: "#ffffff",
         },
         margin: { l: 20, r: 20, t: 55, b: 20 },
+        annotations: totals.slice(0, 8).map((item, index) => ({
+          xref: "paper",
+          yref: "paper",
+          x: 0.02,
+          y: 0.95 - index * 0.055,
+          text: `${item.name} ${format(item.value)}`,
+          showarrow: false,
+          align: "left",
+          font: { size: 11, color: "#21313A" },
+        })),
       },
     });
   }
@@ -285,7 +313,7 @@
         mode: "markers+text",
         lon: rows.map((item) => item.coord.lon),
         lat: rows.map((item) => item.coord.lat),
-        text: rows.map((item) => item.name),
+        text: rows.map((item) => `${item.name}<br>${format(item.value)}`),
         textposition: "top center",
         marker: {
           size: rows.map((item) => 10 + (item.value / max) * 34),
@@ -362,7 +390,7 @@
     if (document.querySelector("#chart-theme-style")) return;
     const style = document.createElement("style");
     style.id = "chart-theme-style";
-    style.textContent = ".theme-field{gap:8px}.theme-swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px}.theme-swatches span{height:22px;border-radius:3px;border:1px solid rgba(22,34,45,.14);box-shadow:inset 0 -7px 12px rgba(0,0,0,.08)}";
+    style.textContent = ".theme-field{gap:8px}.theme-icons{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.theme-icon{height:34px;display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:hidden;padding:0;border:1px solid rgba(22,34,45,.16);border-radius:5px;background:#fff;cursor:pointer}.theme-icon span{display:block;height:100%}.theme-icon:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(22,34,45,.12)}.theme-icon.active{outline:2px solid var(--accent);outline-offset:2px}";
     document.head.appendChild(style);
   }
 }());
