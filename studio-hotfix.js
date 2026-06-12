@@ -1,11 +1,24 @@
 (function () {
+  let selectedCard = null;
+
   window.addEventListener("DOMContentLoaded", () => {
+    removeRegionMap();
     installAllFilterFix();
     installMapGuard();
     installMapApplyOverride();
     installTextThemeFix();
+    installChartInspector();
     injectPanelRefresh();
   });
+
+  function removeRegionMap() {
+    if (typeof window.chartSpecs !== "function" || window.chartSpecs.__withoutRegionMap) return;
+    const previous = window.chartSpecs;
+    window.chartSpecs = function chartSpecsWithoutRegionMap() {
+      return previous().filter((spec) => !(spec.group === "GEO" && String(spec.label || "").includes("\uC9C0\uC5ED \uC9C0\uB3C4")));
+    };
+    window.chartSpecs.__withoutRegionMap = true;
+  }
 
   function installAllFilterFix() {
     document.addEventListener("click", (event) => {
@@ -106,15 +119,91 @@
     return colors.length ? colors : ["#45B8AC", "#B8E6A3", "#2F95B8", "#2D64A8"];
   }
 
+  function installChartInspector() {
+    const grid = document.querySelector("#chartGrid");
+    if (!grid) return;
+    grid.addEventListener("click", (event) => {
+      if (event.target.closest("button,input,label,select,textarea")) return;
+      const card = event.target.closest(".chart-card");
+      if (card) selectChartCard(card);
+    });
+    new MutationObserver(() => {
+      decorateChartCards();
+      if (!selectedCard || !document.body.contains(selectedCard)) {
+        selectChartCard(document.querySelector(".chart-card"), false);
+      }
+    }).observe(grid, { childList: true, subtree: true });
+    decorateChartCards();
+    setTimeout(() => selectChartCard(document.querySelector(".chart-card"), false), 500);
+  }
+
+  function decorateChartCards() {
+    document.querySelectorAll(".chart-card").forEach((card) => {
+      if (card.dataset.inspectable) return;
+      card.dataset.inspectable = "true";
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", "Select chart for editing");
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectChartCard(card);
+        }
+      });
+    });
+  }
+
+  function selectChartCard(card, focusPanel = true) {
+    if (!card) return;
+    selectedCard = card;
+    document.querySelectorAll(".chart-card.is-selected").forEach((item) => item.classList.remove("is-selected"));
+    card.classList.add("is-selected");
+    updateInspectorTitle();
+    hydrateStationBoxFromSelectedChart();
+    if (focusPanel) document.querySelector(".chart-editor-panel")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  function updateInspectorTitle() {
+    const panel = document.querySelector(".chart-editor-panel");
+    if (!panel) return;
+    let badge = panel.querySelector(".selected-chart-badge");
+    if (!badge) {
+      panel.querySelector("header")?.insertAdjacentHTML("beforeend", '<span class="selected-chart-badge"></span>');
+      badge = panel.querySelector(".selected-chart-badge");
+    }
+    const title = selectedCard?.querySelector(".chart-card-header h3")?.textContent?.trim() || "Click a chart";
+    badge.textContent = `Editing: ${title}`;
+  }
+
+  function hydrateStationBoxFromSelectedChart() {
+    const plot = selectedPlot();
+    const box = document.querySelector("#stationCoords");
+    if (!plot || !box) return;
+    const trace = plot.data?.find((item) => item.type === "scattergeo");
+    if (!trace) return;
+    const names = extractNames(trace);
+    const rows = names.map((name, index) => {
+      const lat = trace.lat?.[index];
+      const lon = trace.lon?.[index];
+      if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lon))) return null;
+      return `${name},${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+    }).filter(Boolean);
+    if (rows.length) box.value = rows.join("\n");
+  }
+
+  function selectedPlot() {
+    return selectedCard?.querySelector(".plot") || null;
+  }
+
   function safeApplyMap() {
     if (!window.Plotly) return;
-    const mapX = optionalNumber("#mapX", -180, 180);
-    const mapY = optionalNumber("#mapY", -85, 85);
-    const mapZoom = numberValue("#mapZoom", 1);
-    const stations = parseStations(document.querySelector("#stationCoords")?.value || "");
+    const stationText = document.querySelector("#stationCoords")?.value || "";
+    const stations = parseStations(stationText);
+    const stationRows = parseStationRows(stationText);
     window.stationCoordinates = stations;
 
-    document.querySelectorAll(".plot").forEach((plot) => {
+    const plots = selectedPlot() ? [selectedPlot()] : Array.from(document.querySelectorAll(".plot"));
+    plots.forEach((plot) => {
       if (!plot.data) return;
       const hasBubbleMap = plot.data.some((trace) => trace.type === "scattergeo");
       if (!hasBubbleMap) return;
@@ -126,7 +215,7 @@
         const lon = Array.from(trace.lon || []);
         let changed = false;
         names.forEach((name, index) => {
-          const station = stations[normalize(name)];
+          const station = stations[normalize(name)] || stationRows[index];
           if (!station) return;
           lat[index] = station.lat;
           lon[index] = station.lon;
@@ -136,16 +225,6 @@
           try { window.Plotly.restyle(plot, { lat: [lat], lon: [lon] }, [traceIndex]); } catch (_) {}
         }
       });
-
-      const layoutUpdate = {};
-      if (mapX != null && mapY != null) {
-        layoutUpdate["geo.center.lon"] = mapX;
-        layoutUpdate["geo.center.lat"] = mapY;
-      }
-      if (mapZoom !== 1) layoutUpdate["geo.projection.scale"] = mapZoom;
-      if (Object.keys(layoutUpdate).length) {
-        try { window.Plotly.relayout(plot, layoutUpdate); } catch (_) {}
-      }
     });
   }
 
@@ -157,7 +236,8 @@
     if (y) y.value = "";
     if (zoom) zoom.value = "1";
     if (!window.Plotly) return;
-    document.querySelectorAll(".plot").forEach((plot) => {
+    const plots = selectedPlot() ? [selectedPlot()] : Array.from(document.querySelectorAll(".plot"));
+    plots.forEach((plot) => {
       if (!plot.data?.some((trace) => trace.type === "scattergeo")) return;
       try {
         window.Plotly.relayout(plot, {
@@ -184,15 +264,23 @@
 
   function parseStations(text) {
     const result = {};
+    parseStationRows(text).forEach((row) => {
+      result[normalize(row.name)] = { lat: row.lat, lon: row.lon };
+    });
+    return result;
+  }
+
+  function parseStationRows(text) {
+    const rows = [];
     text.split(/\r?\n/).forEach((line) => {
       const parts = line.split(",").map((part) => part.trim()).filter(Boolean);
       if (parts.length < 3) return;
       const lat = Number(parts[1]);
       const lon = Number(parts[2]);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-      result[normalize(parts[0])] = { lat, lon };
+      rows.push({ name: parts[0], lat, lon });
     });
-    return result;
+    return rows;
   }
 
   function extractNames(trace) {
@@ -218,8 +306,26 @@
       .studio-layout .template-sidebar .status{min-height:34px!important;margin-top:10px!important;padding:8px!important;background:#fff!important;border-color:rgba(23,37,51,.08)!important}
       .studio-layout .filter-chip{min-height:28px!important;padding:6px 9px!important;box-shadow:none}
       .studio-layout .filter-chip.active{background:#2f6cea!important;border-color:#275fd8!important;box-shadow:0 5px 13px rgba(49,107,234,.22)!important}
-      .studio-layout .chart-editor-panel{padding:14px!important;gap:12px!important}
-      .studio-layout .chart-editor-panel header{padding-bottom:12px;border-bottom:1px solid rgba(23,37,51,.08)}
+      .studio-layout .chart-card{cursor:pointer}
+      .studio-layout .chart-card.is-selected{outline:2px solid #2f6cea!important;outline-offset:2px;border-color:#2f6cea!important}
+      .studio-layout .chart-editor-panel{padding:0!important;gap:0!important;background:#fff!important;border-color:rgba(23,37,51,.12)!important}
+      .studio-layout .chart-editor-panel header{padding:14px 14px 12px!important;border-bottom:1px solid rgba(23,37,51,.08);background:#fbfcfd!important;position:sticky;top:0;z-index:2}
+      .studio-layout .chart-editor-panel header strong{font-size:14px!important}
+      .studio-layout .chart-editor-panel header span:not(.selected-chart-badge){font-size:11px!important;color:#7b8490!important}
+      .studio-layout .selected-chart-badge{display:block;margin-top:7px;padding:7px 8px;border-radius:6px;background:#eef4ff;color:#2454c6;font-size:11px;font-weight:850;line-height:1.35}
+      .studio-layout .chart-editor-panel>.editor-field,
+      .studio-layout .chart-editor-panel>.editor-toggle,
+      .studio-layout .chart-editor-panel>.editor-divider,
+      .studio-layout .chart-editor-panel>h3,
+      .studio-layout .chart-editor-panel>.editor-actions,
+      .studio-layout .chart-editor-panel>#editorApply,
+      .studio-layout .chart-editor-panel>.editor-help{margin-left:14px!important;margin-right:14px!important}
+      .studio-layout .chart-editor-panel>.editor-field{margin-top:12px!important}
+      .studio-layout .chart-editor-panel>.editor-toggle{min-height:32px;border-top:1px solid rgba(23,37,51,.06);padding-top:10px}
+      .studio-layout .chart-editor-panel .editor-grid-2,
+      .studio-layout .chart-editor-panel .editor-field:has(#mapZoom){display:none!important}
+      .studio-layout .chart-editor-panel h3{margin-top:14px!important;padding-top:14px;border-top:1px solid rgba(23,37,51,.08)}
+      .studio-layout .editor-field textarea#stationCoords{min-height:170px!important;font-size:12px!important;background:#fbfcfd!important}
       .studio-layout .editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
       .studio-layout #mapApply,.studio-layout #mapReset,.studio-layout #editorApply{border-radius:6px!important;height:34px!important}
       .studio-layout #mapReset{background:#fff!important;color:#263341!important;border:1px solid rgba(23,37,51,.14)!important}
