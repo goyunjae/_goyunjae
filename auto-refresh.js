@@ -1,7 +1,7 @@
 (function () {
   if (window.__studioFinalLoader) return;
   window.__studioFinalLoader = true;
-  ["./studio-final.js?v=20260615-1320", "./flourish-flow.js?v=20260615-1320"].forEach((src) => {
+  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1445"].forEach((src) => {
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
