@@ -8,6 +8,13 @@
     script.defer = true;
     document.head.appendChild(script);
   }
+  const flowSrc = "./flourish-flow.js?v=20260615-1115";
+  if (!Array.from(document.scripts).some((script) => script.src.includes("flourish-flow.js"))) {
+    const script = document.createElement("script");
+    script.src = flowSrc;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
 }());
 
 (function () {
