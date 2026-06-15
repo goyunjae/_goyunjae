@@ -1,5 +1,5 @@
 (function () {
-  const VERSION = "20260615-1605";
+  const VERSION = "20260615-1615";
   let applyTimer = null;
 
   ready(start);
@@ -75,6 +75,7 @@
     plot.data.forEach((trace, index) => {
       if (trace.type !== "scattergeo") return;
       ensureBaseCoords(plot, trace, index);
+      const names = traceNames(trace);
       const marker = {
         ...(trace.marker || {}),
         opacity: trace.marker?.opacity ?? 0.86,
@@ -83,6 +84,7 @@
       if (!Array.isArray(marker.color)) marker.color = palette(index);
       const update = {
         marker: [marker],
+        text: [names],
         textposition: ["top center"],
         textfont: [{ color: "#1f2937", size: 11, family: "Malgun Gothic, Arial, sans-serif" }],
         hoverinfo: ["text"],
