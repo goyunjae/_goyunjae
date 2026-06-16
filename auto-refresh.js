@@ -41,7 +41,7 @@
   function parseRowsToChartData(rows, sheetName) {
     const nonemptyRows = rows.filter((row) => row.some(Boolean));
     if (!nonemptyRows.length || Math.max(...nonemptyRows.map((row) => row.length)) < 2) throw new Error(`${sheetName}: not enough data for charts.`);
-    const title = nonemptyRows[0][0] || "그래프 미리보기";
+    const title = nonemptyRows[0][0] || "사업 성과 추이";
     const labels = nonemptyRows[0].slice(1).filter(Boolean);
     if (!labels.length) throw new Error(`${sheetName}: enter labels from B1.`);
     const series = [];
