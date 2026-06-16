@@ -1,5 +1,5 @@
 (function () {
-  const VERSION = "20260615-1630";
+  const VERSION = "20260616-1150";
   const PALETTE = ["#2f6cea", "#2bb3a3", "#b8e6a3", "#f4c542", "#ef476f", "#7c3aed", "#0f766e"];
 
   ready(start);
@@ -73,15 +73,21 @@
   }
 
   function observeEditor() {
-    const workspace = document.querySelector(".workspace") || document.body;
-    if (workspace.dataset.treemapObserver === VERSION) return;
-    workspace.dataset.treemapObserver = VERSION;
-    new MutationObserver(cleanHierarchyButtons).observe(workspace, { childList: true, subtree: true });
-    document.addEventListener("click", (event) => {
-      if (event.target.closest?.(".chart-card,.studio-tab[data-view='preview']")) {
-        setTimeout(cleanHierarchyButtons, 120);
-      }
-    }, true);
+    if (document.body.dataset.treemapEvents === VERSION) return;
+    document.body.dataset.treemapEvents = VERSION;
+    ["click", "change"].forEach((type) => {
+      document.addEventListener(type, (event) => {
+        if (!event.target.closest?.("#generateBtn,.chart-card,.studio-tab,.chart-type-segment,.final-editor-panel,#chartGroup")) return;
+        scheduleHierarchyClean(120);
+      }, true);
+    });
+  }
+
+  let hierarchyCleanTimer = 0;
+
+  function scheduleHierarchyClean(delay = 80) {
+    clearTimeout(hierarchyCleanTimer);
+    hierarchyCleanTimer = setTimeout(cleanHierarchyButtons, delay);
   }
 
   function cleanHierarchyButtons() {
