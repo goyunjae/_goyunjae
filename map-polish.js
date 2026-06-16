@@ -1,6 +1,7 @@
 (function () {
-  const VERSION = "20260616-1145";
+  const VERSION = "20260616-1225";
   let applyTimer = null;
+  let resizeTimer = null;
 
   ready(start);
 
@@ -14,6 +15,7 @@
     installGeoErrorGuard();
     style();
     installEvents();
+    installResizeHandlers();
     observeCharts();
     delayedRefresh();
   }
@@ -25,6 +27,18 @@
       const message = String(event.reason?.message || event.reason || "");
       if (message.includes("reading 'objects'")) event.preventDefault();
     });
+    window.addEventListener("error", (event) => {
+      const message = String(event.message || event.error?.message || "");
+      if (message.includes("reading 'objects'")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
+    const previousOnError = window.onerror;
+    window.onerror = function mapPolishOnError(message, source, lineno, colno, error) {
+      if (String(message || error?.message || "").includes("reading 'objects'")) return true;
+      return typeof previousOnError === "function" ? previousOnError.call(this, message, source, lineno, colno, error) : false;
+    };
   }
 
   function installEvents() {
@@ -59,6 +73,30 @@
     }, true);
   }
 
+  function installResizeHandlers() {
+    if (document.body.dataset.mapPolishResize === VERSION) return;
+    document.body.dataset.mapPolishResize = VERSION;
+    window.addEventListener("resize", () => scheduleMapResize(180));
+    if (window.ResizeObserver) {
+      const observer = new ResizeObserver(() => scheduleMapResize(160));
+      ["#chartGrid", ".main-panel", ".content"].forEach((selector) => {
+        const node = document.querySelector(selector);
+        if (node) observer.observe(node);
+      });
+    }
+  }
+
+  function scheduleMapResize(delay = 120) {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      document.querySelectorAll(".plot").forEach((plot) => {
+        if (!plot.data?.some((trace) => trace.type === "scattergeo" || trace.type === "choropleth")) return;
+        delete plot.dataset.mapPolishSignature;
+        enhanceMap(plot, true);
+      });
+    }, delay);
+  }
+
   function observeCharts() {
     const grid = document.querySelector("#chartGrid");
     if (!grid || grid.dataset.mapPolishObserver === VERSION) return;
@@ -82,8 +120,11 @@
     const hasGeo = plot.data.some((trace) => trace.type === "scattergeo" || trace.type === "choropleth");
     if (!hasGeo) return;
 
+    markGeoPlot(plot);
     const coords = collectCoords(plot);
-    const signature = VERSION + ":" + coords.map((item) => `${item.lat.toFixed(4)},${item.lon.toFixed(4)}`).join("|");
+    const size = preferredGeoSize(plot);
+    applyGeoSizeVars(plot, size);
+    const signature = VERSION + ":" + size.width + "x" + size.height + ":" + coords.map((item) => `${item.lat.toFixed(4)},${item.lon.toFixed(4)}`).join("|");
     if (fit && plot.dataset.mapPolishSignature === signature) return;
     plot.dataset.mapPolishSignature = signature;
 
@@ -110,6 +151,7 @@
     const geo = {
       scope: "world",
       projection: { type: "mercator" },
+      domain: { x: [0, 1], y: [0, 1] },
       showframe: false,
       showland: true,
       landcolor: "#e7edf2",
@@ -133,6 +175,9 @@
     }
     try {
       safePlotly(Plotly.relayout(plot, {
+        autosize: false,
+        width: size.width,
+        height: size.height,
         geo,
         margin: { ...(plot.layout?.margin || {}), l: 8, r: 8, b: 8 },
         paper_bgcolor: "#ffffff",
@@ -143,6 +188,24 @@
 
   function safePlotly(result) {
     if (result && typeof result.catch === "function") result.catch(() => {});
+  }
+
+  function markGeoPlot(plot) {
+    plot.classList.add("geo-plot");
+    plot.closest(".chart-card")?.classList.add("geo-chart-card");
+  }
+
+  function preferredGeoSize(plot) {
+    const card = plot.closest(".chart-card");
+    const basis = Math.max(card?.clientWidth || 0, plot.parentElement?.clientWidth || 0, plot.clientWidth || 0);
+    const width = Math.max(720, Math.floor(basis - 32));
+    const height = Math.max(420, Math.min(560, Math.round(width * 0.46)));
+    return { width, height };
+  }
+
+  function applyGeoSizeVars(plot, size) {
+    plot.style.setProperty("--geo-plot-min-width", `${size.width}px`);
+    plot.style.setProperty("--geo-plot-height", `${size.height}px`);
   }
 
   function syncMapEditor() {
@@ -188,6 +251,7 @@
       });
       try { Plotly.restyle(plot, { lat: [lat], lon: [lon] }, [traceIndex]); } catch (_) {}
     });
+    delete plot.dataset.mapPolishSignature;
     setTimeout(() => {
       enhanceMap(plot, fit);
       box.dataset.userEdited = "false";
@@ -202,6 +266,7 @@
     plot.__mapPolishBase.forEach((base) => {
       try { Plotly.restyle(plot, { lat: [base.lat], lon: [base.lon] }, [base.index]); } catch (_) {}
     });
+    delete plot.dataset.mapPolishSignature;
     setTimeout(() => {
       enhanceMap(plot, true);
       if (box) {
@@ -318,6 +383,11 @@
     style.id = "map-polish-style";
     style.textContent = `
       .map-polished .modebar{opacity:0;pointer-events:none}
+      .map-polished .chart-card.geo-chart-card{grid-column:1/-1!important;overflow-x:auto!important;min-height:520px!important}
+      .map-polished.toss-polish .chart-card.geo-chart-card{overflow-x:auto!important}
+      .map-polished .geo-chart-card .plot.geo-plot{width:100%!important;min-width:var(--geo-plot-min-width,720px)!important;height:var(--geo-plot-height,420px)!important;min-height:420px!important}
+      .map-polished .geo-chart-card .svg-container,
+      .map-polished .geo-chart-card .main-svg{min-width:720px!important}
       .map-polished .map-editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
       .map-polished .map-editor-actions button{min-height:34px;border-radius:6px;border:1px solid rgba(15,23,42,.14);font-size:12px;font-weight:850;cursor:pointer}
       .map-polished #applyStationCoords{background:#2f6cea;color:#fff;border-color:#2f6cea}
