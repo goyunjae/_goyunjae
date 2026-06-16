@@ -1,6 +1,6 @@
 (function () {
   const sampleRows = [
-    ["연차평가 예시", "2024", "2025", "2026", ""],
+    ["", "2024", "2025", "2026", ""],
     ["A사업", "120", "145", "170", ""],
     ["B사업", "90", "110", "132", ""],
     ["C사업", "60", "72", "95", ""],
@@ -128,7 +128,7 @@
       throw new Error(`${sheetName}: 그래프를 만들 수 있는 데이터가 부족합니다.`);
     }
 
-    const title = nonemptyRows[0][0] || sheetName;
+    const title = nonemptyRows[0][0] || "그래프 미리보기";
     const labels = nonemptyRows[0].slice(1).filter(Boolean);
     if (labels.length === 0) {
       throw new Error(`${sheetName}: B1 이후에 라벨을 입력하세요.`);
