@@ -1,5 +1,5 @@
 (function () {
-  const VERSION = "20260615-1615";
+  const VERSION = "20260616-1145";
   let applyTimer = null;
 
   ready(start);
@@ -11,10 +11,20 @@
 
   function start() {
     document.body.classList.add("map-polished");
+    installGeoErrorGuard();
     style();
     installEvents();
     observeCharts();
     delayedRefresh();
+  }
+
+  function installGeoErrorGuard() {
+    if (window.__mapPolishGeoGuard === VERSION) return;
+    window.__mapPolishGeoGuard = VERSION;
+    window.addEventListener("unhandledrejection", (event) => {
+      const message = String(event.reason?.message || event.reason || "");
+      if (message.includes("reading 'objects'")) event.preventDefault();
+    });
   }
 
   function installEvents() {
@@ -72,6 +82,11 @@
     const hasGeo = plot.data.some((trace) => trace.type === "scattergeo" || trace.type === "choropleth");
     if (!hasGeo) return;
 
+    const coords = collectCoords(plot);
+    const signature = VERSION + ":" + coords.map((item) => `${item.lat.toFixed(4)},${item.lon.toFixed(4)}`).join("|");
+    if (fit && plot.dataset.mapPolishSignature === signature) return;
+    plot.dataset.mapPolishSignature = signature;
+
     plot.data.forEach((trace, index) => {
       if (trace.type !== "scattergeo") return;
       ensureBaseCoords(plot, trace, index);
@@ -89,13 +104,11 @@
         textfont: [{ color: "#1f2937", size: 11, family: "Malgun Gothic, Arial, sans-serif" }],
         hoverinfo: ["text"],
       };
-      try { Plotly.restyle(plot, update, [index]); } catch (_) {}
+      try { safePlotly(Plotly.restyle(plot, update, [index])); } catch (_) {}
     });
 
-    const coords = collectCoords(plot);
     const geo = {
       scope: "world",
-      resolution: 50,
       projection: { type: "mercator" },
       showframe: false,
       showland: true,
@@ -119,13 +132,17 @@
       geo.lonaxis.range = range(coords.map((item) => item.lon), 8, -180, 180);
     }
     try {
-      Plotly.relayout(plot, {
+      safePlotly(Plotly.relayout(plot, {
         geo,
         margin: { ...(plot.layout?.margin || {}), l: 8, r: 8, b: 8 },
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
-      });
+      }));
     } catch (_) {}
+  }
+
+  function safePlotly(result) {
+    if (result && typeof result.catch === "function") result.catch(() => {});
   }
 
   function syncMapEditor() {
