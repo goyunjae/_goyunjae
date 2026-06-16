@@ -1,7 +1,7 @@
 (function () {
   if (window.__studioFinalLoader) return;
   window.__studioFinalLoader = true;
-  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1655", "./map-polish.js?v=20260615-1615", "./treemap-fix.js?v=20260615-1630", "./toss-polish.js?v=20260616-1030"].forEach((src) => {
+  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1655", "./map-polish.js?v=20260615-1615", "./treemap-fix.js?v=20260615-1630", "./toss-polish.js?v=20260616-1115", "./cleanup-polish.js?v=20260616-1115"].forEach((src) => {
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
@@ -41,7 +41,7 @@
   function parseRowsToChartData(rows, sheetName) {
     const nonemptyRows = rows.filter((row) => row.some(Boolean));
     if (!nonemptyRows.length || Math.max(...nonemptyRows.map((row) => row.length)) < 2) throw new Error(`${sheetName}: not enough data for charts.`);
-    const title = nonemptyRows[0][0] || sheetName;
+    const title = nonemptyRows[0][0] || "그래프 미리보기";
     const labels = nonemptyRows[0].slice(1).filter(Boolean);
     if (!labels.length) throw new Error(`${sheetName}: enter labels from B1.`);
     const series = [];
