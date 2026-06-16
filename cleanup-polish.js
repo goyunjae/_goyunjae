@@ -27,11 +27,11 @@
       empty.innerHTML = '<strong>차트 미리보기</strong><span>생성된 차트가 이 영역에 표시됩니다.</span>';
     }
     document.querySelectorAll("input").forEach((input) => {
-      if (input.value.trim() === "연차평가 예시") input.value = "";
+      if (input.value.trim() === "연차평가 예시") input.value = "사업 성과 추이";
     });
     const title = document.querySelector("#reportTitle");
     if (title && title.textContent.trim() === "연차평가 예시") {
-      title.textContent = "그래프 미리보기";
+      title.textContent = "사업 성과 추이";
     }
     document.querySelectorAll(".brand h1").forEach((heading) => {
       if (heading.textContent.includes("연차평가")) heading.textContent = "G2 그래프";
