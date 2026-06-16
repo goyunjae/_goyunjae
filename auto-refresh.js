@@ -1,7 +1,7 @@
 (function () {
   if (window.__studioFinalLoader) return;
   window.__studioFinalLoader = true;
-  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1655", "./map-polish.js?v=20260615-1615", "./treemap-fix.js?v=20260615-1630"].forEach((src) => {
+  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1655", "./map-polish.js?v=20260615-1615", "./treemap-fix.js?v=20260615-1630", "./toss-polish.js?v=20260616-1030"].forEach((src) => {
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
