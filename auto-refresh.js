@@ -1,7 +1,14 @@
 (function () {
   if (window.__studioFinalLoader) return;
   window.__studioFinalLoader = true;
-  ["./studio-final.js?v=20260615-1445", "./flourish-flow.js?v=20260615-1655", "./map-polish.js?v=20260615-1615", "./treemap-fix.js?v=20260615-1630", "./toss-polish.js?v=20260616-1115", "./cleanup-polish.js?v=20260616-1115"].forEach((src) => {
+  [
+    "./studio-final.js?v=20260615-1445",
+    "./flourish-flow.js?v=20260615-1655",
+    "./map-polish.js?v=20260616-1145",
+    "./treemap-fix.js?v=20260615-1630",
+    "./toss-polish.js?v=20260616-1135",
+    "./cleanup-polish.js?v=20260616-1135",
+  ].forEach((src) => {
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
@@ -56,7 +63,7 @@
     return { sheetName, title, labels, series, values };
   }
   function toNumber(value) {
-    const match = String(value ?? "").replace(/,/g, "").replace(/[\uBA85\uAC74\uAC1C%]/g, "").trim().match(/-?\d+(\.\d+)?/);
+    const match = String(value ?? "").replace(/,/g, "").replace(/[명건개%]/g, "").trim().match(/-?\d+(\.\d+)?/);
     return match ? Number(match[0]) : NaN;
   }
   function setStatus(message, isError = false) {
