@@ -94,23 +94,23 @@
     document.querySelectorAll(".chart-type-segments").forEach((group) => {
       const existing = Array.from(group.querySelectorAll(".chart-type-segment"));
       const wanted = [
-        ["TREEMAP", "Treemap"],
-        ["PIE", "Sunburst"],
-        ["BAR", "Bars"],
-        ["RADIAL", "Radial"],
+        ["TREEMAP", "Treemap", "TREEMAP"],
+        ["PIE", "Circles", "PIE"],
+        ["BAR", "Bars", "BAR"],
+        ["RADIAL", "Radial", "RADIAL"],
       ];
-      const alreadyClean = existing.length === wanted.length && wanted.every(([value, label], index) => {
+      const alreadyClean = existing.length === wanted.length && wanted.every(([value, label, key], index) => {
         const button = existing[index];
-        return button?.dataset.type === value && button.textContent.trim() === label;
+        return button?.dataset.type === value && button?.dataset.uxType === key && button.textContent.trim() === label;
       });
       if (alreadyClean) {
-        existing.forEach((button) => button.classList.toggle("active", isActiveType(button.dataset.type)));
+        existing.forEach((button) => button.classList.toggle("active", isActiveType(button.dataset.uxType || button.dataset.type)));
         return;
       }
-      group.innerHTML = wanted.map(([value, label]) => {
-        const old = existing.find((button) => button.dataset.type === value && button.textContent.trim() === label);
-        const active = old?.classList.contains("active") || isActiveType(value);
-        return '<button type="button" class="chart-type-segment ' + (active ? "active" : "") + '" data-type="' + value + '">' + label + "</button>";
+      group.innerHTML = wanted.map(([value, label, key]) => {
+        const old = existing.find((button) => (button.dataset.uxType || button.dataset.type) === key && button.textContent.trim() === label);
+        const active = old?.classList.contains("active") || isActiveType(key);
+        return '<button type="button" class="chart-type-segment ' + (active ? "active" : "") + '" data-type="' + value + '" data-ux-type="' + key + '">' + label + "</button>";
       }).join("");
     });
   }
