@@ -1,5 +1,5 @@
 (function () {
-  const VERSION = "20260617-0925";
+  const VERSION = "20260617-1015";
   const SEGMENTS = [
     { key: "TREEMAP", label: "Treemap", switchType: "TREEMAP" },
     { key: "PIE", label: "Circles", switchType: "PIE" },
@@ -32,6 +32,7 @@
 
   function runCleanup() {
     removeTopBrand();
+    renameSideBrand();
     removeByFilters();
     normalizeHierarchySegments();
     renameConfusingPanelCopy();
@@ -42,6 +43,16 @@
     document.querySelectorAll(".studio-global-bar .project-title span").forEach((node) => node.remove());
     document.querySelectorAll(".project-title input").forEach((input) => {
       input.setAttribute("aria-label", "Visualization title");
+    });
+  }
+
+  function renameSideBrand() {
+    document.querySelectorAll(".brand h1").forEach((heading) => {
+      heading.textContent = "차트 스튜디오";
+    });
+    document.querySelectorAll(".brand-mark").forEach((mark) => {
+      mark.hidden = true;
+      mark.setAttribute("aria-hidden", "true");
     });
   }
 
@@ -76,12 +87,12 @@
   }
 
   function renameConfusingPanelCopy() {
-    const pieIsActive = Array.from(document.querySelectorAll(".chart-type-segment.active")).some((button) => {
-      return (button.dataset.uxType || keyFromLabel(button.textContent) || button.dataset.type) === "PIE";
-    });
-    if (!pieIsActive && activeKeyFromPlot() !== "PIE") return;
+    const activeKey = displayedActiveKey();
+    if (activeKey !== "PIE" && activeKey !== "SUNBURST") return;
     document.querySelectorAll(".editor-accordion .accordion-head span").forEach((label) => {
-      if (label.textContent.trim() === "Sunburst") label.textContent = "Circles";
+      const text = label.textContent.trim();
+      if (activeKey === "PIE" && text === "Sunburst") label.textContent = "Circles";
+      if (activeKey === "SUNBURST" && text === "Circles") label.textContent = "Sunburst";
     });
   }
 
@@ -99,6 +110,16 @@
     if (plotKey) return plotKey;
     const active = existing.find((button) => button.classList.contains("active"));
     return active?.dataset.uxType || keyFromLabel(active?.textContent || "") || active?.dataset.type || "";
+  }
+
+  function displayedActiveKey() {
+    const active = Array.from(document.querySelectorAll(".chart-type-segment.active")).find(Boolean);
+    const fromButton = active?.dataset.uxType || keyFromLabel(active?.textContent || "") || active?.dataset.type || "";
+    if (fromButton) return fromButton;
+    const sticky = window.__uxHierarchyActiveKey;
+    const plotKey = activeKeyFromPlot();
+    if (sticky && isCompatible(sticky, plotKey)) return sticky;
+    return plotKey;
   }
 
   function activeKeyFromPlot() {
@@ -128,16 +149,25 @@
     if (document.body.dataset.uxDetailFix === VERSION) return;
     document.body.dataset.uxDetailFix = VERSION;
 
-    document.addEventListener("click", (event) => {
+    document.addEventListener("pointerdown", (event) => {
       const segment = event.target.closest?.(".chart-type-segment");
       if (segment) {
         window.__uxHierarchyActiveKey = segment.dataset.uxType || keyFromLabel(segment.textContent) || segment.dataset.type || "";
         scheduleCleanup(0);
         scheduleCleanup(120);
+      }
+    }, true);
+
+    document.addEventListener("click", (event) => {
+      const segment = event.target.closest?.(".chart-type-segment");
+      if (segment) {
+        window.__uxHierarchyActiveKey = segment.dataset.uxType || keyFromLabel(segment.textContent) || segment.dataset.type || "";
+        scheduleCleanup(0);
+        scheduleCleanup(180);
         return;
       }
 
-      if (event.target.closest?.(".chart-card,#generateBtn,.filter-chip,#chartGroup,.studio-tab")) {
+      if (event.target.closest?.(".filter-chip,#chartGroup,.studio-tab")) {
         window.__uxHierarchyActiveKey = "";
         scheduleCleanup(100);
       }
@@ -159,7 +189,8 @@
       body.ux-detail-clean .studio-global-bar{height:56px!important;padding:0 16px!important;grid-template-columns:1fr auto!important}
       body.ux-detail-clean .studio-global-bar .studio-logo,
       body.ux-detail-clean .studio-global-bar .project-title span,
-      body.ux-detail-clean .filter-section.filter-by{display:none!important}
+      body.ux-detail-clean .filter-section.filter-by,
+      body.ux-detail-clean .template-sidebar .brand-mark{display:none!important}
       body.ux-detail-clean .project-title{border-left:0!important;padding-left:0!important;min-width:0!important}
       body.ux-detail-clean .project-title input{max-width:280px!important}
       body.ux-detail-clean .template-filter-panel{gap:18px!important}
