@@ -48,7 +48,7 @@
     if (title && title.textContent.trim() === "연차평가 예시") title.textContent = "사업 성과 추이";
 
     document.querySelectorAll(".brand h1").forEach((heading) => {
-      if (heading.textContent.includes("연차평가")) heading.textContent = "G2 그래프";
+      if (heading.textContent.includes("연차평가") || heading.textContent.includes("G2")) heading.textContent = "차트 스튜디오";
     });
   }
 
