@@ -9,6 +9,7 @@
     "./treemap-fix.js?v=20260616-1150",
     "./toss-polish.js?v=20260616-1135",
     "./cleanup-polish.js?v=20260616-1135",
+    "./ui-detail-fix.js?v=20260617-0925",
   ].forEach((src) => {
     const script = document.createElement("script");
     script.src = src;
