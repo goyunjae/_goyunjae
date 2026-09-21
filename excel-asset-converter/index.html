@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BK21 물품 현황 변환기</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <div class="eyebrow">JBNU · BK21</div>
+      <h1>물품취득원장 변환기</h1>
+      <p class="desc">물품취득원장 Excel 파일을 업로드하면 BK21 물품 현황 규격으로 자동 정리합니다.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept=".xls,.xlsx" />
+        <span class="drop-title">Excel 파일 선택</span>
+        <span class="drop-sub">.xls 또는 .xlsx · 파일을 끌어다 놓아도 됩니다.</span>
+      </label>
+
+      <div id="fileInfo" class="file-info hidden"></div>
+
+      <button id="convertBtn" class="btn" disabled>변환 후 다운로드</button>
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <details class="rules">
+        <summary>적용 규칙</summary>
+        <ul>
+          <li>취득일자 2020-09-01 이후 자료만 유지</li>
+          <li>취득일자 + 내용년수로 불용가능기간 계산</li>
+          <li>지정된 17개 열만 정리하여 출력</li>
+          <li>출력 파일명: 4단계 두뇌한국(BK)21 물품 현황_YY.MM.DD.xlsx</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
