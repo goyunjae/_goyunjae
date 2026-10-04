@@ -21,8 +21,9 @@ internal static class Program {
         }
         if(args.Contains("--preview")) {
             using(var form=new Studio()) {
-                form.CreateControl();
-                using(var bitmap=new Bitmap(form.Width,form.Height)) {form.DrawToBitmap(bitmap,form.ClientRectangle);bitmap.Save("KeyLoop-preview.png");}
+                form.Show(); Application.DoEvents();
+                using(var bitmap=new Bitmap(form.Width,form.Height)) {form.DrawToBitmap(bitmap,new Rectangle(0,0,form.Width,form.Height));bitmap.Save("KeyLoop-preview.png");}
+                form.Close();
             }
             return 0;
         }
@@ -217,7 +218,7 @@ internal sealed class Studio : Form {
                 int msg=message.ToInt32();
                 if(msg==0x100 || msg==0x101 || msg==0x104 || msg==0x105) {
                     var e=new KeyEvent {AtMs=(int)clock.ElapsedMilliseconds,Vk=(int)key.vk,Scan=(int)key.scan,Extended=(key.flags&1)!=0,Up=msg==0x101 || msg==0x105};
-                    Capture(e);
+                    AppendKeyEvent(e);
                 }
             } else rejected++;
         }
@@ -230,9 +231,9 @@ internal sealed class Studio : Form {
         if(!RawInput.Read(handle,out key,out error)) {readErrors++;return;}
         var e=RawInput.Decode(key,(int)clock.ElapsedMilliseconds);
         if(e==null) {rejected++;return;}
-        Capture(e);
+        AppendKeyEvent(e);
     }
-    void Capture(KeyEvent e) {
+    void AppendKeyEvent(KeyEvent e) {
         if(state!="record") return;
         if(e.Vk==0x79 && !e.Up) {Stop("사용자가 중지했습니다.");return;}
         if(Recording.Reserved(e.Vk) || Native.GetForegroundWindow()!=target || e.AtMs>=recordLimit) {rejected++;return;}
