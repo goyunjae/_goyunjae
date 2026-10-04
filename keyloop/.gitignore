@@ -1,0 +1,4 @@
+dist/
+package/
+*.keyloop.json
+KeyLoop-preview.png
