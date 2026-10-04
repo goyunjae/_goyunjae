@@ -1,4 +1,4 @@
-# KeyLoop
+# KeyLoop 1.0.1
 
 Windows용 키 입력 녹화·반복 스튜디오. 한국어 UI / Python 설치 불필요 / 키 누름·뗌·시간 간격 기록.
 
@@ -7,16 +7,24 @@ Windows용 키 입력 녹화·반복 스튜디오. 한국어 UI / Python 설치 
 ## 다운로드 및 실행
 
 - [다운로드 페이지](https://goyunjae.github.io/_goyunjae/keyloop/)
-- [Windows ZIP](https://github.com/goyunjae/_goyunjae/releases/download/keyloop-v1.0.0/KeyLoop-Windows-x64.zip)
-- [소스 및 릴리스](https://github.com/goyunjae/_goyunjae/releases/tag/keyloop-v1.0.0)
+- [Windows ZIP](https://github.com/goyunjae/_goyunjae/releases/download/keyloop-v1.0.1/KeyLoop-Windows-x64.zip)
+- [소스 및 릴리스](https://github.com/goyunjae/_goyunjae/releases/tag/keyloop-v1.0.1)
 
 Windows 10/11 64비트와 .NET Framework 4.8 환경용입니다. ZIP 압축을 풀고 `Setup.cmd`를 한 번 실행해 웹 연결에 동의합니다. 이후 웹페이지에서 **입력 화면 열기 / 실행 화면 열기** 버튼으로 앱을 열 수 있습니다. Python, 별도 서버, 계정 연동은 필요 없습니다. PC 입력은 실행 파일이 처리합니다. 처음에는 브라우저가 외부 앱 열기 확인을 표시할 수 있습니다.
 
 설정 시 `%LOCALAPPDATA%\KeyLoop\KeyLoop.exe`에 프로그램을 복사하고 현재 사용자 레지스트리 `HKCU\Software\Classes\keyloop`에 웹 링크 연결을 등록합니다. 관리자 권한과 자동 시작 등록은 필요 없습니다. 연결 해제는 `Disconnect.cmd`를 실행합니다. 웹 버튼은 앱 화면만 열며 키 입력은 앱의 시작 버튼을 눌러야 시작합니다. 앱이 이미 실행 중이면 기존 창을 엽니다. 녹화와 재생 사이에는 앱을 닫지 마세요. 닫기 전 녹화를 저장했다면 다시 불러올 수 있습니다.
 
+## 1.0.1 업데이트
+
+- 기존 앱을 완전히 닫고 새 ZIP을 내려받아 압축을 푼 뒤 `Setup.cmd`를 다시 실행하세요. 웹페이지만 새로고침하면 설치된 앱은 업데이트되지 않습니다. 앱 상단에 **1.0.1**이 표시되는지 확인하세요.
+- 기본 녹화를 `WM_INPUT` / `RIDEV_INPUTSINK` 기반의 Windows Raw Input으로 변경했습니다. 기존 키보드 후크 모드도 선택할 수 있습니다.
+- 녹화가 0개이면 수신/제외/오류 개수를 표시합니다. **진단 복사**로 버전, 방식, 대상 창 제목, 이벤트 수, 종료 사유를 복사할 수 있습니다. 키 입력 내용 자체는 진단에 포함하지 않습니다.
+- 이 변경은 수집 경로를 추가한 것이며 메이플에서 실제 녹화·반복이 성공했다는 의미는 아닙니다. 재생은 기존 표준 SendInput 방식입니다.
+- Raw Input 모드에서는 E1/Pause 같은 특수 시퀀스를 제외합니다.
+
 ## 사용 순서
 
-1. **입력** 탭에서 녹화 시간(1~3,600초)을 설정합니다.
+1. **입력** 탭에서 녹화 시간(1~3,600초)을 설정합니다. 녹화 방식은 **Raw Input (기본)**으로 둡니다.
 2. **녹화 시작 / F8**을 누르고, 시작 대기 시간(기본 5초) 안에 대상 창으로 이동합니다. 모든 키를 놓은 상태로 시작해야 합니다.
 3. 대상 창에서 키를 입력합니다. 설정 시간이 끝나거나 **F10**을 누르면 녹화를 마칩니다.
 4. **실행** 탭에서 반복할 총 시간(1~1,440분)을 설정합니다.
@@ -30,7 +38,7 @@ Windows 10/11 64비트와 .NET Framework 4.8 환경용입니다. ZIP 압축을 �
 ## 동작 및 제한
 
 - F8/F9/F10은 제어용으로 예약되어 녹화하지 않습니다.
-- 녹화 중 대상 창이 활성화된 동안만 키 이벤트를 수집합니다. 다른 프로그램이 생성한 입력은 제외합니다.
+- 녹화 중 대상 창이 활성화된 동안만 키 이벤트를 수집합니다. 기존 키보드 후크 모드에서는 다른 프로그램이 생성한 입력을 제외하며, Raw Input 모드는 Windows가 전달한 키보드 장치 이벤트를 읽습니다.
 - 반복에는 녹화 앞뒤의 공백 시간도 포함됩니다. 녹화가 끝날 때 눌려 있던 키는 마지막 시점에 해제하도록 기록합니다.
 - 반복 중 다른 창으로 전환하거나 대상 창이 닫히면 중지하고, 프로그램이 누른 키를 해제합니다.
 - 키 해제가 OS에서 차단되면 상태창에 표시합니다. 해당 키를 직접 눌렀다 놓아야 합니다.
@@ -52,3 +60,5 @@ Windows 10/11 64비트와 .NET Framework 4.8 환경용입니다. ZIP 압축을 �
 - [Microsoft SendInput 문서](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput)
 - [Microsoft LowLevelKeyboardProc 문서](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc)
 - [넥슨: 메이플스토리 비인가 프로그램 방어하기](https://blog.maplestory.nexon.com/stories/146497)
+
+- [Microsoft Raw Input 문서](https://learn.microsoft.com/en-us/windows/win32/inputdev/about-raw-input)

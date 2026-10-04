@@ -8,9 +8,9 @@ if not exist "%KEYLOOP_CSC%" (
   exit /b 1
 )
 if not exist dist mkdir dist
-"%KEYLOOP_CSC%" /nologo /target:winexe /platform:x64 /optimize+ /utf8output /out:dist\KeyLoop.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.Core.dll Program.cs Native.cs Recording.cs
+"%KEYLOOP_CSC%" /nologo /target:winexe /platform:x64 /optimize+ /utf8output /out:dist\KeyLoop.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.Core.dll Program.cs Native.cs Recording.cs RawInput.cs
 if errorlevel 1 exit /b 1
-"%KEYLOOP_CSC%" /nologo /target:exe /platform:x64 /optimize+ /utf8output /out:dist\KeyLoop.Tests.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.Core.dll Program.cs Native.cs Recording.cs
+"%KEYLOOP_CSC%" /nologo /target:exe /platform:x64 /optimize+ /utf8output /out:dist\KeyLoop.Tests.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.Core.dll Program.cs Native.cs Recording.cs RawInput.cs
 if errorlevel 1 exit /b 1
 dist\KeyLoop.Tests.exe --self-test
 if errorlevel 1 exit /b 1

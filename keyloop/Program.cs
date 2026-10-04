@@ -10,6 +10,7 @@ using System.Windows.Forms;
 
 namespace KeyLoop {
 internal static class Program {
+    internal const string Version="1.0.1";
     [STAThread] static int Main(string[] args) {
         if(args.Contains("--self-test")) return SelfTest.Run();
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
@@ -67,7 +68,10 @@ internal sealed class Studio : Form {
     Label status, counter, summary, targetLabel;
     TextBox eventView;
     NumericUpDown recordSeconds, runMinutes, delaySeconds;
-    ComboBox inputMode;
+    ComboBox inputMode, recordMode;
+    bool rawRegistered;
+    int received, rejected, readErrors;
+    string lastDiagnostic="아직 녹화 진단이 없습니다.";
     Button recordButton, playButton, saveButton, loadButton, recordTab, playTab;
     Panel recordPanel, playPanel;
     ProgressBar progress;
@@ -78,7 +82,7 @@ internal sealed class Studio : Form {
         StartPosition=FormStartPosition.CenterScreen; BackColor=bg; ForeColor=Color.White;
         Font=new Font("맑은 고딕",10); AutoScaleMode=AutoScaleMode.Dpi; MaximizeBox=false;
         hookProc=OnKey;
-        AddLabel(this,"KEYLOOP",32,25,700,36,23,Color.White,FontStyle.Bold);
+        AddLabel(this,"KEYLOOP  "+Program.Version,32,25,700,36,23,Color.White,FontStyle.Bold);
         AddLabel(this,"한 번의 입력, 원하는 시간만큼.",34,68,800,25,11,muted,FontStyle.Regular);
         recordTab=ButtonAt(this,"01  입력",32,114,180,43,delegate {ShowTab(true);});
         playTab=ButtonAt(this,"02  실행",222,114,180,43,delegate {ShowTab(false);});
@@ -89,6 +93,9 @@ internal sealed class Studio : Form {
         AddLabel(recordPanel,"시작 후 대상 창으로 이동하세요. 키를 누르고 뗀 시점을 기록합니다.",24,56,820,28,10,muted,FontStyle.Regular);
         AddLabel(recordPanel,"녹화 시간 (초)",24,100,200,26,10,muted,FontStyle.Regular);
         recordSeconds=NumberAt(recordPanel,24,129,160,1,3600,30);
+        AddLabel(recordPanel,"녹화 방식",210,100,240,26,10,muted,FontStyle.Regular);
+        recordMode=new ComboBox {Bounds=new Rectangle(210,129,270,35),DropDownStyle=ComboBoxStyle.DropDownList,BackColor=bg,ForeColor=Color.White};
+        recordMode.Items.AddRange(new object[]{"Raw Input (기본)","키보드 후크 (기존 방식)"});recordMode.SelectedIndex=0;recordPanel.Controls.Add(recordMode);settings.Add(recordMode);
         recordButton=ButtonAt(recordPanel,"●  녹화 시작  F8",624,121,230,46,delegate {Arm("record");});
         AddLabel(playPanel,"반복 실행",22,16,500,32,17,Color.White,FontStyle.Bold);
         AddLabel(playPanel,"기록한 순서와 시간 간격을 반복합니다. 대상 창이 바뀌면 중지합니다.",24,56,820,28,10,muted,FontStyle.Regular);
@@ -100,6 +107,7 @@ internal sealed class Studio : Form {
         playButton=ButtonAt(playPanel,"▶  반복 시작  F9",624,121,230,46,delegate {Arm("play");});
         AddLabel(this,"시작 대기 (초)",34,381,165,25,10,muted,FontStyle.Regular);
         delaySeconds=NumberAt(this,180,378,75,3,15,5);
+        ButtonAt(this,"진단 복사",380,375,175,38,delegate {try {Clipboard.SetText(lastDiagnostic);status.Text="진단 내용을 복사했습니다.";} catch(Exception e) {MessageBox.Show(this,e.Message,"복사 실패");}});
         saveButton=ButtonAt(this,"녹화 저장",575,375,155,38,delegate {Save();});
         loadButton=ButtonAt(this,"불러오기",745,375,165,38,delegate {LoadRecording();});
         var monitor=new Panel {Bounds=new Rectangle(32,432,880,180),BackColor=panel}; Controls.Add(monitor);
@@ -120,7 +128,7 @@ internal sealed class Studio : Form {
             if(!ok10) {recordButton.Enabled=false; playButton.Enabled=false; MessageBox.Show(this,"F10 긴급 정지 등록에 실패했습니다. 단축키를 사용하는 다른 앱을 닫고 다시 실행하세요.","시작할 수 없음"); Close();}
             else if(!ok8 || !ok9) status.Text="F8/F9 등록 실패 · 화면의 시작 버튼을 사용하세요.";
         };
-        FormClosing+=Closing;
+        FormClosing+=OnClosing;
         ShowTab(!play); RefreshSummary();
     }
     Label AddLabel(Control parent,string text,int x,int y,int w,int h,float size,Color color,FontStyle style) {
@@ -164,7 +172,7 @@ internal sealed class Studio : Form {
             if(clock.ElapsedMilliseconds>=recordLimit) {Stop("녹화 완료 · 실행 탭에서 반복할 수 있습니다.");return;}
             counter.Text=TimeText((recordLimit-clock.ElapsedMilliseconds)/1000.0);
             progress.Value=(int)Math.Min(1000,clock.ElapsedMilliseconds*1000/recordLimit);
-            summary.Text=recording.Events.Count+"개 이벤트 기록 중";
+            summary.Text=recording.Events.Count+"개 이벤트 기록 중 · 수신 "+received+" / 제외 "+rejected+" / 오류 "+readErrors;
             eventView.Text=String.Join("   ",recording.Events.Skip(Math.Max(0,recording.Events.Count-10)).Select(e=>((Keys)e.Vk).ToString()+(e.Up ? " ↑" : " ↓")));
         } else if(state=="play") {
             double total=(double)runMinutes.Value*60;
@@ -184,10 +192,16 @@ internal sealed class Studio : Form {
         }
         targetLabel.Text="대상 창: "+Native.Title(target); loops=0;
         if(pending=="record") {
-            hook=Native.SetWindowsHookEx(13,hookProc,Native.GetModuleHandle(null),0);
-            if(hook==IntPtr.Zero) {Stop("키 입력 기록을 시작할 수 없습니다. 오류: "+Marshal.GetLastWin32Error());return;}
+            received=0;rejected=0;readErrors=0;
+            if(recordMode.SelectedIndex==0) {
+                rawRegistered=RawInput.Register(Handle);
+                if(!rawRegistered) {int error=Marshal.GetLastWin32Error();lastDiagnostic="Raw Input 등록 실패: "+error;Stop(lastDiagnostic);return;}
+            } else {
+                hook=Native.SetWindowsHookEx(13,hookProc,Native.GetModuleHandle(null),0);
+                if(hook==IntPtr.Zero) {int error=Marshal.GetLastWin32Error();lastDiagnostic="키보드 후크 등록 실패: "+error;Stop(lastDiagnostic);return;}
+            }
             recording=new Recording(); held.Clear(); recordLimit=(int)recordSeconds.Value*1000;
-            clock.Restart(); state="record"; status.Text="● 녹화 중 · F10으로 종료";
+            clock.Restart(); state="record"; status.Text="● 녹화 중 · "+(rawRegistered ? "Raw Input" : "키보드 후크");
         } else {
             try {recording.Validate();} catch(Exception e) {Stop(e.Message);return;}
             cancel=new CancellationTokenSource(); workerMessage=null; state="play"; status.Text="▶ 반복 실행 중 · F10으로 즉시 중지";
@@ -197,20 +211,35 @@ internal sealed class Studio : Form {
     }
     IntPtr OnKey(int code,IntPtr message,IntPtr data) {
         if(code>=0 && state=="record") {
+            received++;
             var key=(Native.HookKey)Marshal.PtrToStructure(data,typeof(Native.HookKey));
-            if((key.flags&0x12)==0 && !Recording.Reserved((int)key.vk) && key.scan>0 && key.scan<=255 && Native.GetForegroundWindow()==target && clock.ElapsedMilliseconds<recordLimit) {
+            if((key.flags&0x12)==0 && key.scan>0 && key.scan<=255) {
                 int msg=message.ToInt32();
                 if(msg==0x100 || msg==0x101 || msg==0x104 || msg==0x105) {
                     var e=new KeyEvent {AtMs=(int)clock.ElapsedMilliseconds,Vk=(int)key.vk,Scan=(int)key.scan,Extended=(key.flags&1)!=0,Up=msg==0x101 || msg==0x105};
-                    if(!e.Up || held.ContainsKey(e.Identity)) {
-                        if(e.Up) held.Remove(e.Identity); else held[e.Identity]=e;
-                        recording.Events.Add(e);
-                        if(recording.Events.Count>=199700) Stop("녹화 이벤트 한도에 도달했습니다.");
-                    }
+                    Capture(e);
                 }
-            }
+            } else rejected++;
         }
         return Native.CallNextHookEx(hook,code,message,data);
+    }
+    void OnRawInput(IntPtr handle) {
+        if(state!="record" || !rawRegistered) return;
+        received++;
+        RawInput.Keyboard key;int error;
+        if(!RawInput.Read(handle,out key,out error)) {readErrors++;return;}
+        var e=RawInput.Decode(key,(int)clock.ElapsedMilliseconds);
+        if(e==null) {rejected++;return;}
+        Capture(e);
+    }
+    void Capture(KeyEvent e) {
+        if(state!="record") return;
+        if(e.Vk==0x79 && !e.Up) {Stop("사용자가 중지했습니다.");return;}
+        if(Recording.Reserved(e.Vk) || Native.GetForegroundWindow()!=target || e.AtMs>=recordLimit) {rejected++;return;}
+        if(e.Up && !held.ContainsKey(e.Identity)) {rejected++;return;}
+        if(e.Up) held.Remove(e.Identity);else held[e.Identity]=e;
+        recording.Events.Add(e);
+        if(recording.Events.Count>=199700) Stop("녹화 이벤트 한도에 도달했습니다.");
     }
     void Playback(Recording r,bool scan,long limit,CancellationToken token) {
         var pressed=new Dictionary<string,KeyEvent>(); string result="설정한 실행 시간이 끝났습니다.";
@@ -253,10 +282,16 @@ internal sealed class Studio : Form {
     void Stop(string reason) {
         if(state=="play") {if(cancel!=null) cancel.Cancel(); status.Text="중지 중 · 눌린 키를 해제합니다."; return;}
         if(state=="record") {
+            string method=rawRegistered ? "Raw Input" : "키보드 후크";
+            if(rawRegistered) {RawInput.Remove();rawRegistered=false;}
             if(hook!=IntPtr.Zero) {Native.UnhookWindowsHookEx(hook);hook=IntPtr.Zero;}
             recording.DurationMs=(int)Math.Max(100,Math.Min(recordLimit,clock.ElapsedMilliseconds)); clock.Stop();
             foreach(var e in held.Values) recording.Events.Add(e.Release(recording.DurationMs)); held.Clear();
-            if(recording.Events.Count==0) recording=null;
+            lastDiagnostic="KeyLoop "+Program.Version+"\r\n방식: "+method+"\r\n대상: "+Native.Title(target)+"\r\n녹화 길이(ms): "+recording.DurationMs+"\r\n수신: "+received+"\r\n제외: "+rejected+"\r\n읽기 오류: "+readErrors+"\r\n저장 이벤트: "+recording.Events.Count+"\r\n종료: "+reason;
+            if(recording.Events.Count==0) {
+                recording=null;
+                reason=received==0 ? method+" 입력 수신 0개 · 진단 복사로 상태 확인" : "수신 "+received+"개 / 저장 0개 · 진단 복사로 상태 확인";
+            }
             else { try {recording.Validate();} catch(Exception e) {recording=null;reason="녹화 검증 실패: "+e.Message;} }
         }
         state="idle"; pending=""; status.Text=reason; counter.Text="00:00"; RefreshSummary();
@@ -274,15 +309,17 @@ internal sealed class Studio : Form {
         }
     }
     protected override void WndProc(ref Message message) {
+        if(message.Msg==0xff) OnRawInput(message.LParam);
         if(message.Msg==0x8001) ShowTab(message.WParam.ToInt32()!=2);
-        if(message.Msg==0x312) {int id=message.WParam.ToInt32();if(id==10)Stop("사용자가 중지했습니다.");else if(id==8)Arm("record");else if(id==9)Arm("play");}
+        if(message.Msg==0x312) {int id=message.WParam.ToInt32();if(id==10 && state!="idle")Stop("사용자가 중지했습니다.");else if(id==8)Arm("record");else if(id==9)Arm("play");}
         base.WndProc(ref message);
     }
-    void Closing(object sender,FormClosingEventArgs e) {
+    void OnClosing(object sender,FormClosingEventArgs e) {
         if(state=="play") {closeAfterStop=true;Stop("");e.Cancel=true;return;}
         Stop(""); timer.Stop();
         Native.UnregisterHotKey(Handle,8);Native.UnregisterHotKey(Handle,9);Native.UnregisterHotKey(Handle,10);
         if(hook!=IntPtr.Zero) Native.UnhookWindowsHookEx(hook);
+        if(rawRegistered) RawInput.Remove();
     }
 }
 }

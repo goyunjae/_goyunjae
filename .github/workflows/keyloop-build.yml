@@ -19,6 +19,13 @@ jobs:
         working-directory: keyloop
         shell: cmd
         run: build.cmd
+      - name: Render UI preview
+        shell: pwsh
+        working-directory: keyloop
+        run: |
+          $process = Start-Process dist/KeyLoop.exe -ArgumentList --preview -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          if (!(Test-Path KeyLoop-preview.png)) { throw "UI preview missing" }
       - name: Create package
         shell: pwsh
         run: |
@@ -40,10 +47,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release view keyloop-v1.0.0 --repo "$env:GITHUB_REPOSITORY" 2>$null
+          gh release view keyloop-v1.0.1 --repo "$env:GITHUB_REPOSITORY" 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create keyloop-v1.0.0 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "KeyLoop 1.0.0 · Windows" --notes-file keyloop/README.md
+            gh release create keyloop-v1.0.1 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "KeyLoop 1.0.1 · Windows" --notes-file keyloop/README.md
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release upload keyloop-v1.0.0 KeyLoop-Windows-x64.zip SHA256SUMS.txt --clobber --repo "$env:GITHUB_REPOSITORY"
+          gh release upload keyloop-v1.0.1 KeyLoop-Windows-x64.zip SHA256SUMS.txt keyloop/KeyLoop-preview.png --clobber --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
