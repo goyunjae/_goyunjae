@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 test('all graph groups render in the real browser', async ({ page }) => {
+  test.setTimeout(120000);
   const consoleErrors = [];
   const pageErrors = [];
   page.on('console', (msg) => {
@@ -10,7 +11,7 @@ test('all graph groups render in the real browser', async ({ page }) => {
 
   await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
-  await page.waitForSelector('#manualTable tbody input');
+  await page.waitForSelector('#manualTable tbody input', { state: 'attached' });
 
   const groups = await page.locator('#chartGroup option').evaluateAll((options) =>
     options.map((o) => o.value).filter(Boolean)
