@@ -143,3 +143,18 @@ body[data-g2-view="data"] .sheet-scroll { max-height: calc(100vh - 230px); }
   .g2-studio-v2 .chart-grid { grid-template-columns: 1fr; }
   .g2-editor-grid.two { grid-template-columns: 1fr; }
 }
+
+.g2-studio-v2 .chart-error { border-color: #fecaca !important; }
+.g2-studio-v2 .plot-error {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 24px;
+  background: #fffafa;
+  color: #991b1b;
+  text-align: center;
+  line-height: 1.55;
+}
+.g2-studio-v2 .plot-error small { color: #64748b; font-weight: 500; }
