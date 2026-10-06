@@ -308,7 +308,17 @@
           update['line.width'] = lineWidth;
         }
         if (trace.marker) {
-          update['marker.color'] = Array.isArray(trace.marker.color) ? trace.marker.color : color;
+          const numericColors = Array.isArray(trace.marker.color) &&
+            trace.marker.color.length > 0 &&
+            trace.marker.color.every((value) => Number.isFinite(Number(value)));
+          if (numericColors) {
+            update['marker.colorscale'] = paletteScale(palette);
+            update['marker.showscale'] = trace.marker.showscale !== false;
+          } else {
+            update['marker.color'] = Array.isArray(trace.marker.color)
+              ? trace.marker.color.map((_, i) => palette[i % palette.length])
+              : color;
+          }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;
           update['marker.line.color'] = '#FFFFFF';
           update['marker.line.width'] = 0.9;
@@ -390,6 +400,13 @@
       if (status) status.textContent = 'Grid Data가 수정되었습니다. 그래프 생성 버튼을 누르면 반영됩니다.';
     }, 160), { passive: true });
   }
+
+  function paletteScale(colors) {
+    if (!Array.isArray(colors) || colors.length === 0) return [[0, '#F8FAFC'], [1, '#0072B2']];
+    if (colors.length === 1) return [[0, colors[0]], [1, colors[0]]];
+    return colors.map((color, index) => [index / (colors.length - 1), color]);
+  }
+
 
   function debounce(fn, wait) {
     let timer = null;
