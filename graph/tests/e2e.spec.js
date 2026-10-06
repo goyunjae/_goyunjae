@@ -236,3 +236,71 @@ test('editor sections collapse and pastel GEO/PCA controls render correctly', as
 
   expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
 });
+
+
+test('precision GEO uses MapLibre tile maps and geodesic overlays', async ({ page }) => {
+  test.setTimeout(90000);
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
+
+  await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
+
+  await page.selectOption('#chartGroup', 'GEO');
+  await page.click('#generateBtn');
+  await page.waitForTimeout(1600);
+
+  const cards = page.locator('.chart-card');
+  await expect(cards).toHaveCount(5);
+
+  const bubble = page.locator('.chart-card', { hasText: '정밀 관측점 지도' });
+  await expect(bubble).toBeVisible();
+  const mapState = await bubble.locator('.plot').evaluate((plot) => ({
+    traceTypes: plot.data.map((trace) => trace.type),
+    mapStyle: plot.layout?.map?.style,
+    zoom: plot.layout?.map?.zoom,
+    hasGeoLayout: Boolean(plot.layout?.geo),
+    latPrecision: plot.data[0]?.lat?.[0],
+    lonPrecision: plot.data[0]?.lon?.[0],
+  }));
+  expect(mapState.traceTypes.every((type) => type === 'scattermap')).toBeTruthy();
+  expect(mapState.mapStyle).toBe('carto-voyager');
+  expect(mapState.hasGeoLayout).toBeFalsy();
+  expect(Number(mapState.latPrecision)).toBeCloseTo(37.5665, 4);
+  expect(Number(mapState.lonPrecision)).toBeCloseTo(126.9780, 4);
+
+  // MapLibre canvas proves that this is a tile map, not the old outline-based scattergeo.
+  await expect(bubble.locator('.maplibregl-canvas')).toBeVisible();
+
+  // Change to a different detailed base map and explicit zoom.
+  await bubble.click();
+  await expect(page.locator('#g2MapStyle')).toBeVisible();
+  await page.selectOption('#g2MapStyle', 'open-street-map');
+  await page.locator('#g2MapZoom').fill('6.5');
+  await page.locator('#g2Regenerate').click();
+  await page.waitForTimeout(1400);
+
+  const restyled = await page.locator('.chart-card', { hasText: '정밀 관측점 지도' }).locator('.plot').evaluate((plot) => ({
+    style: plot.layout?.map?.style,
+    zoom: plot.layout?.map?.zoom,
+  }));
+  expect(restyled.style).toBe('open-street-map');
+  expect(Number(restyled.zoom)).toBeCloseTo(6.5, 4);
+
+  // Value contour must be drawn on the tile map in lon/lat.
+  const contour = page.locator('.chart-card', { hasText: '정밀 값 보간 등고선' });
+  await expect(contour).toBeVisible();
+  const contourState = await contour.locator('.plot').evaluate((plot) => ({
+    traceTypes: plot.data.map((trace) => trace.type),
+    hasMap: Boolean(plot.layout?.map),
+    contourPoints: plot.data[0]?.lon?.filter((value) => value != null).length || 0,
+    finite: (plot.data[0]?.lon || []).filter((v) => v != null).every(Number.isFinite) &&
+      (plot.data[0]?.lat || []).filter((v) => v != null).every(Number.isFinite),
+  }));
+  expect(contourState.traceTypes.every((type) => type === 'scattermap')).toBeTruthy();
+  expect(contourState.hasMap).toBeTruthy();
+  expect(contourState.contourPoints).toBeGreaterThan(10);
+  expect(contourState.finite).toBeTruthy();
+
+  expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
+});
