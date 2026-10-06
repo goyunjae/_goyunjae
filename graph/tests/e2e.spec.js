@@ -66,7 +66,7 @@ test('publication palette presets and manual colors work in the real browser', a
     plot.data.map((trace) => trace.marker?.color).filter(Boolean)
   );
   expect(navyColors.length).toBeGreaterThan(1);
-  navyColors.forEach((color) => expect(String(color).toUpperCase()).toBe('#1F3A5F'));
+  navyColors.forEach((color) => expect(String(color).toUpperCase()).toBe('#526B86'));
 
   const firstColor = page.locator('.g2-color-input').first();
   await expect(firstColor).toBeAttached();
@@ -135,6 +135,91 @@ test('Grapher-style object manager edits individual chart objects', async ({ pag
 
   const directClickColors = await page.locator('.chart-card.is-selected .plot').evaluate((plot) => plot.data[0].marker?.color);
   expect(String(directClickColors[2]).toUpperCase()).toBe('#18794E');
+
+  expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
+});
+
+
+test('editor sections collapse and pastel GEO/PCA controls render correctly', async ({ page }) => {
+  test.setTimeout(90000);
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
+
+  await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
+
+  // Collapsible editor sections
+  await page.selectOption('#chartGroup', 'BAR');
+  await page.click('#generateBtn');
+  await page.waitForSelector('details[data-section-key="palette"]');
+  expect(await page.locator('details[data-section-key]').count()).toBeGreaterThanOrEqual(4);
+
+  const colorsSection = page.locator('details[data-section-key="palette"]');
+  expect(await colorsSection.evaluate((node) => node.open)).toBeTruthy();
+  await colorsSection.locator('summary').click();
+  expect(await colorsSection.evaluate((node) => node.open)).toBeFalsy();
+  await colorsSection.locator('summary').click();
+  expect(await colorsSection.evaluate((node) => node.open)).toBeTruthy();
+
+  // GEO: IDW contour like the supplied reference, with adjustable interval/style
+  await page.selectOption('#chartGroup', 'GEO');
+  await page.click('#generateBtn');
+  await page.waitForTimeout(700);
+  await expect(page.locator('#g2ContourInterval')).toBeVisible();
+
+  await page.locator('#g2ContourInterval').fill('5');
+  await page.locator('#g2ContourPower').fill('3.5');
+  await page.locator('#g2ContourLineWidth').fill('2');
+  await page.locator('#g2ContourLineColor').evaluate((input) => {
+    input.value = '#D99080';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('#g2Regenerate').click();
+  await page.waitForTimeout(900);
+
+  const geoContourCard = page.locator('.chart-card', { hasText: '값 보간 등고선' });
+  await expect(geoContourCard).toBeVisible();
+  const geoState = await geoContourCard.locator('.plot').evaluate((plot) => {
+    const trace = plot.data.find((item) => item.name === 'IDW contour');
+    return {
+      size: trace?.contours?.size,
+      lineWidth: trace?.line?.width,
+      lineColor: trace?.colorscale?.[0]?.[1],
+      zFinite: Array.isArray(trace?.z) && trace.z.flat().every(Number.isFinite),
+      zSpread: Array.isArray(trace?.z) ? Math.max(...trace.z.flat()) - Math.min(...trace.z.flat()) : 0,
+    };
+  });
+  expect(geoState.size).toBe(5);
+  expect(Number(geoState.lineWidth)).toBeCloseTo(2, 5);
+  expect(String(geoState.lineColor).toUpperCase()).toBe('#D99080');
+  expect(geoState.zFinite).toBeTruthy();
+  expect(geoState.zSpread).toBeGreaterThan(0);
+
+  // PCA: automatic groups displayed with pastel ellipse regions
+  await page.selectOption('#chartGroup', 'ANALYSIS');
+  await page.click('#generateBtn');
+  await page.waitForTimeout(700);
+  await expect(page.locator('#g2RegionCount')).toBeVisible();
+  await page.locator('#g2RegionCount').fill('2');
+  await page.locator('#g2PcaEllipseScale').fill('1.8');
+  await page.locator('#g2Regenerate').click();
+  await page.waitForTimeout(800);
+
+  const pcaCard = page.locator('.chart-card', { hasText: 'PCA 점수 · 그룹 타원' });
+  await expect(pcaCard).toBeVisible();
+  const pcaState = await pcaCard.locator('.plot').evaluate((plot) => {
+    const ellipses = plot.data.filter((trace) => trace.fill === 'toself');
+    const groups = plot.data.filter((trace) => /^Group \d+$/.test(String(trace.name || '')));
+    return {
+      ellipseCount: ellipses.length,
+      groupCount: groups.length,
+      pastelFills: ellipses.map((trace) => trace.fillcolor),
+      groupNames: groups.map((trace) => trace.name),
+    };
+  });
+  expect(pcaState.groupCount).toBe(2);
+  expect(pcaState.ellipseCount).toBe(2);
+  expect(pcaState.pastelFills.every((value) => String(value).startsWith('rgba('))).toBeTruthy();
 
   expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
 });
