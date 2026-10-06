@@ -210,6 +210,7 @@ async function renderCharts(data) {
     return;
   }
 
+  purgePlots();
   chartGrid.innerHTML = "";
   renderedCharts = [];
   emptyState.classList.add("hidden");
@@ -310,6 +311,7 @@ function uniqueChartSpecs() {
 }
 
 function clearChartOutput(message, isError = false) {
+  purgePlots();
   chartGrid.innerHTML = "";
   renderedCharts = [];
   emptyState.classList.remove("hidden");
@@ -723,13 +725,13 @@ function polishChart(chart, data) {
     }
 
     if (item.type === "scatter" || item.type === "scattergeo" || item.type === "scatterpolar") {
-      if (item.line) item.line = { width: 2.25, color, ...item.line };
-      if (item.marker) item.marker = {
+      const mode = String(item.mode || "");
+      if (item.line || mode.includes("lines")) item.line = { width: 2.25, color, ...(item.line || {}) };
+      if (item.marker || mode.includes("markers")) item.marker = {
         size: 8,
         opacity: 0.9,
         color,
-        line: { color: "#FFFFFF", width: 0.9 },
-        ...item.marker,
+        ...(item.marker || {}),
         line: { color: "#FFFFFF", width: 0.9, ...(item.marker?.line || {}) },
       };
     }
@@ -777,6 +779,7 @@ function mergeLayout(layout, title, data = null) {
     yaxis: { ...axisLayoutDefaults.yaxis, ...(layout.yaxis || {}) },
     margin: { ...baseLayout.margin, ...(layout.margin || {}) },
     autosize: true,
+    uniformtext: { minsize: 9, mode: "hide", ...(layout.uniformtext || {}) },
     uirevision: "g2-stable",
   };
 }
@@ -873,6 +876,7 @@ function resetApp() {
   generateBtn.disabled = true;
   downloadAllBtn.disabled = true;
   selectAllBtn.disabled = true;
+  purgePlots();
   chartGrid.innerHTML = "";
   summary.innerHTML = "";
   emptyState.classList.remove("hidden");
@@ -880,6 +884,14 @@ function resetApp() {
   reportMeta.textContent = "엑셀의 첫 행은 제목/라벨, 첫 열은 항목명으로 인식합니다.";
   setStatus("대기 중");
 }
+
+function purgePlots() {
+  if (!window.Plotly) return;
+  chartGrid.querySelectorAll(".plot").forEach((plot) => {
+    try { Plotly.purge(plot); } catch (_) {}
+  });
+}
+
 
 function cleanName(value) {
   return String(value || "untitled").replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_").slice(0, 80);
