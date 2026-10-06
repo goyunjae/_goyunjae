@@ -363,7 +363,7 @@
         <span>Color</span>
         <input
           id="g2SelectedObjectColor"
-          class="g2-property-color-input"
+          class="g2-color-input g2-property-color-input"
           type="color"
           value="${color}"
           data-kind="${target.kind}"
