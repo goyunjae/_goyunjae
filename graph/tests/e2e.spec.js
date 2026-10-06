@@ -246,6 +246,12 @@ test('precision GEO uses MapLibre tile maps and geodesic overlays', async ({ pag
   await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
 
+  // GEO uses column labels as station names. Replace the default year labels with known coordinates.
+  const headerInputs = page.locator('#manualTable tbody tr').first().locator('input');
+  await headerInputs.nth(1).fill('서울');
+  await headerInputs.nth(2).fill('부산');
+  await headerInputs.nth(3).fill('대전');
+
   await page.selectOption('#chartGroup', 'GEO');
   await page.click('#generateBtn');
   await page.waitForTimeout(1600);
