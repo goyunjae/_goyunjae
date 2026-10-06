@@ -174,10 +174,21 @@ test('editor sections collapse and pastel GEO/PCA controls render correctly', as
   await labelsSection.locator('summary').click();
   expect(await labelsSection.evaluate((node) => node.open)).toBeTruthy();
 
-  // GEO: IDW contour like the supplied reference, with adjustable interval/style
+  // GEO: use actual station labels so the precision engine can resolve exact coordinates.
+  await page.evaluate(() => {
+    const inputs = document.querySelectorAll('#manualTable tbody tr:first-child input');
+    const labels = ['사업 성과 추이', '서울', '부산', '대전'];
+    labels.forEach((value, index) => {
+      if (!inputs[index]) return;
+      inputs[index].value = value;
+      inputs[index].dispatchEvent(new Event('input', { bubbles: true }));
+      inputs[index].dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
   await page.selectOption('#chartGroup', 'GEO');
   await page.click('#generateBtn');
-  await page.waitForTimeout(700);
+  await expect(page.locator('.chart-card')).toHaveCount(5, { timeout: 20000 });
+  await page.locator('.chart-card', { hasText: '정밀 값 보간 등고선' }).click();
   await expect(page.locator('#g2ContourInterval')).toBeVisible();
 
   await page.locator('#g2ContourInterval').fill('5');
@@ -188,25 +199,29 @@ test('editor sections collapse and pastel GEO/PCA controls render correctly', as
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('#g2Regenerate').click();
-  await page.waitForTimeout(900);
+  await expect(page.locator('.chart-card')).toHaveCount(5, { timeout: 20000 });
 
-  const geoContourCard = page.locator('.chart-card', { hasText: '값 보간 등고선' });
+  const geoContourCard = page.locator('.chart-card', { hasText: '정밀 값 보간 등고선' });
   await expect(geoContourCard).toBeVisible();
   const geoState = await geoContourCard.locator('.plot').evaluate((plot) => {
-    const trace = plot.data.find((item) => item.name === 'IDW contour');
+    const trace = plot.data.find((item) => item.name === '보간 등고선');
+    const lon = (trace?.lon || []).filter((value) => value != null);
+    const lat = (trace?.lat || []).filter((value) => value != null);
     return {
-      size: trace?.contours?.size,
       lineWidth: trace?.line?.width,
-      lineColor: trace?.colorscale?.[0]?.[1],
-      zFinite: Array.isArray(trace?.z) && trace.z.flat().every(Number.isFinite),
-      zSpread: Array.isArray(trace?.z) ? Math.max(...trace.z.flat()) - Math.min(...trace.z.flat()) : 0,
+      lineColor: trace?.line?.color,
+      points: lon.length,
+      finite: lon.every(Number.isFinite) && lat.every(Number.isFinite),
+      type: trace?.type,
     };
   });
-  expect(geoState.size).toBe(5);
+  const contourInterval = await page.evaluate(() => window.G2ScienceSettings?.contourInterval);
+  expect(contourInterval).toBe(5);
+  expect(geoState.type).toBe('scattermap');
   expect(Number(geoState.lineWidth)).toBeCloseTo(2, 5);
   expect(String(geoState.lineColor).toUpperCase()).toBe('#D99080');
-  expect(geoState.zFinite).toBeTruthy();
-  expect(geoState.zSpread).toBeGreaterThan(0);
+  expect(geoState.points).toBeGreaterThan(10);
+  expect(geoState.finite).toBeTruthy();
 
   // PCA: automatic groups displayed with pastel ellipse regions
   await page.selectOption('#chartGroup', 'ANALYSIS');
@@ -246,18 +261,23 @@ test('precision GEO uses MapLibre tile maps and geodesic overlays', async ({ pag
   await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
 
-  // GEO uses column labels as station names. Replace the default year labels with known coordinates.
-  const headerInputs = page.locator('#manualTable tbody tr').first().locator('input');
-  await headerInputs.nth(1).fill('서울');
-  await headerInputs.nth(2).fill('부산');
-  await headerInputs.nth(3).fill('대전');
+  // GEO uses column labels as station names. Grid Data is hidden in Preview, so update it through the DOM.
+  await page.evaluate(() => {
+    const inputs = document.querySelectorAll('#manualTable tbody tr:first-child input');
+    const labels = ['사업 성과 추이', '서울', '부산', '대전'];
+    labels.forEach((value, index) => {
+      if (!inputs[index]) return;
+      inputs[index].value = value;
+      inputs[index].dispatchEvent(new Event('input', { bubbles: true }));
+      inputs[index].dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
 
   await page.selectOption('#chartGroup', 'GEO');
   await page.click('#generateBtn');
-  await page.waitForTimeout(1600);
 
   const cards = page.locator('.chart-card');
-  await expect(cards).toHaveCount(5);
+  await expect(cards).toHaveCount(5, { timeout: 20000 });
 
   const bubble = page.locator('.chart-card', { hasText: '정밀 관측점 지도' });
   await expect(bubble).toBeVisible();
@@ -284,7 +304,7 @@ test('precision GEO uses MapLibre tile maps and geodesic overlays', async ({ pag
   await page.selectOption('#g2MapStyle', 'open-street-map');
   await page.locator('#g2MapZoom').fill('6.5');
   await page.locator('#g2Regenerate').click();
-  await page.waitForTimeout(1400);
+  await expect(page.locator('.chart-card')).toHaveCount(5, { timeout: 20000 });
 
   const restyled = await page.locator('.chart-card', { hasText: '정밀 관측점 지도' }).locator('.plot').evaluate((plot) => ({
     style: plot.layout?.map?.style,
