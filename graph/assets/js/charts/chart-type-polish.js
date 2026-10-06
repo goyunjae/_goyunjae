@@ -4,7 +4,7 @@
   const ALL = "전체";
   const previous = window.chartSpecs;
   const themes = [
-    ["Mint", ["#45B8AC", "#B8E6A3", "#2F95B8", "#2D64A8", "#F2B75E", "#E56F76"]],
+    ["Paper", ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E"]],
     ["Ocean", ["#1CA7A8", "#76D7C4", "#247BA0", "#173F5F", "#F6D55C", "#ED553B"]],
     ["Forest", ["#2E7D32", "#81C784", "#A5D6A7", "#546E7A", "#F9A825", "#D84315"]],
     ["Sunset", ["#FF6B6B", "#FFD166", "#F4A261", "#2A9D8F", "#264653", "#8E7AD8"]],
@@ -160,7 +160,7 @@
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         colorway: theme.colors,
-        font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#21313A" },
+        font: { family: "Arial, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif", color: "#1F2937", size: 12 },
         hoverlabel: { bgcolor: "#21313A", bordercolor: "#21313A", font: { color: "#ffffff" } },
         legend: { orientation: "h", x: 0, y: -0.22, font: { size: 10, color: "#5E6C84" }, ...(layout.legend || {}) },
         xaxis: axis(layout.xaxis),
