@@ -709,12 +709,12 @@ function polishChart(chart, data) {
 
   next.traces = next.traces.map((trace, index) => {
     const item = { ...trace };
-    const color = color(index);
+    const traceColor = color(index);
 
     if (item.type === "bar" || item.type === "waterfall") {
       item.marker = {
         ...(item.marker || {}),
-        color: item.marker?.color ?? color,
+        color: item.marker?.color ?? traceColor,
         line: { color: "#FFFFFF", width: 0.8, ...(item.marker?.line || {}) },
       };
       item.opacity = item.opacity ?? 0.94;
@@ -726,11 +726,11 @@ function polishChart(chart, data) {
 
     if (item.type === "scatter" || item.type === "scattergeo" || item.type === "scatterpolar") {
       const mode = String(item.mode || "");
-      if (item.line || mode.includes("lines")) item.line = { width: 2.25, color, ...(item.line || {}) };
+      if (item.line || mode.includes("lines")) item.line = { width: 2.25, color: traceColor, ...(item.line || {}) };
       if (item.marker || mode.includes("markers")) item.marker = {
         size: 8,
         opacity: 0.9,
-        color,
+        color: traceColor,
         ...(item.marker || {}),
         line: { color: "#FFFFFF", width: 0.9, ...(item.marker?.line || {}) },
       };
