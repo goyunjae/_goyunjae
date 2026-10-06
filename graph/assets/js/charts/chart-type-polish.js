@@ -213,9 +213,15 @@
 
   function traceValues(trace) {
     if (trace.type === "barpolar") return trace.r;
-    if (trace.type === "scattergeo") return trace.marker?.size;
-    if (trace.orientation === "h") return trace.x;
-    return trace.y || trace.r || trace.z;
+    if (trace.type === "scattergeo" && numericArray(trace.marker?.size)) return trace.marker.size;
+    const candidates = trace.orientation === "h"
+      ? [trace.x, trace.y, trace.r, trace.z]
+      : [trace.y, trace.x, trace.r, trace.z];
+    return candidates.find(numericArray) || null;
+  }
+
+  function numericArray(values) {
+    return Array.isArray(values) && values.length > 0 && values.some((value) => Number.isFinite(Number(value)));
   }
 
   function colorsFor(trace, index) {
@@ -382,7 +388,10 @@
   }
 
   function format(value) {
-    return Number(value || 0).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? number.toLocaleString("ko-KR", { maximumFractionDigits: 1 })
+      : String(value ?? "");
   }
 
   function injectStyle() {
