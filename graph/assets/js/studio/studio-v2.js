@@ -450,6 +450,7 @@
   function wirePlotObjectEvents(plot) {
     if (!plot || plot._g2ObjectEventsBound || typeof plot.on !== 'function') return;
     plot._g2ObjectEventsBound = true;
+    plot.classList?.add('g2-object-clickable');
     plot.on('plotly_click', (event) => {
       const point = event?.points?.[0];
       if (!point) return;
@@ -629,7 +630,7 @@
         const count = Math.max(trace.x?.length || 0, trace.y?.length || 0);
         const hasPointOverrides = Object.keys(pointOverrides).length > 0;
         update['marker.color'] = hasPointOverrides
-          ? Array.from({ length: count }, (_, i) => pointOverrides[i] || palette[i % palette.length])
+          ? Array.from({ length: count }, (_, i) => pointOverrides[i] || color)
           : color;
         update['marker.line.color'] = '#FFFFFF';
         update['marker.line.width'] = 0.8;
