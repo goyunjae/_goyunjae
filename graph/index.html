@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>연차평가 보고서 그래프 생성기</title>
+    <title>G2 Figure Studio · 그래프 생성기</title>
     <link rel="stylesheet" href="./assets/css/styles.css" />
     <link rel="stylesheet" href="./assets/css/design-polish.css" />
+    <link rel="stylesheet" href="./assets/css/studio-v2.css?v=20261006-1" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
-    <script src="./assets/js/core/app.js" defer></script>
-    <script src="./assets/js/core/manual-input.js" defer></script>
-    <script src="./assets/js/charts/advanced-charts.js" defer></script>
-    <script src="./assets/js/charts/polish-charts.js" defer></script>
-    <script src="./assets/js/charts/spider-chart.js" defer></script>
-    <script src="./assets/js/charts/chart-type-polish.js?v=20260612-1315" defer></script>
-    <script src="./assets/js/charts/premium-polish.js?v=20260612-1400" defer></script>
-    <script src="./assets/js/studio/studio-layout.js?v=20260612-1530" defer></script>
-    <script src="./assets/js/studio/studio-hotfix.js?v=20260612-1605" defer></script>
-    <script src="./assets/js/core/auto-refresh.js" defer></script>
+    <script src="./assets/js/core/app.js?v=20261006-1" defer></script>
+    <script src="./assets/js/core/manual-input.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/advanced-charts.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/polish-charts.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/spider-chart.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/chart-type-polish.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/premium-polish.js?v=20261006-1" defer></script>
+    <script src="./assets/js/charts/science-charts.js?v=20261006-1" defer></script>
+    <script src="./assets/js/studio/studio-v2.js?v=20261006-1" defer></script>
   </head>
   <body>
     <main class="app-shell">
@@ -26,8 +26,8 @@
           <div class="brand">
             <span class="brand-mark">G2</span>
             <div>
-              <h1>연차평가 그래프</h1>
-              <p>엑셀 파일을 업로드하거나 표에 직접 입력해서 그래프를 생성합니다.</p>
+              <h1>G2 Figure Studio</h1>
+              <p>데이터를 입력해 논문·보고서용 그래프와 공간 분석 피규어를 생성합니다.</p>
             </div>
           </div>
 
@@ -125,7 +125,7 @@
           <div id="chartGrid" class="chart-grid"></div>
           <div id="emptyState" class="empty-state">
             <strong>파일을 올리거나 표에 입력하면 이곳에 그래프가 나타납니다.</strong>
-            <span>기존 Python 스크립트의 10개 그룹, 40개 변형을 브라우저용으로 재구성했습니다.</span>
+            <span>보고서용 기본 차트부터 PCA, 공간 거리 등고선, 자동 영역 구분까지 지원합니다.</span>
           </div>
         </section>
       </section>

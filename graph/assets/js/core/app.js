@@ -1,14 +1,16 @@
 const PALETTE = [
-  "#274C77", "#6096BA", "#A3CEF1", "#8B8C89",
-  "#D9A441", "#A44A3F", "#587B7F", "#6A4C93",
-  "#2A9D8F", "#E76F51", "#264653", "#B56576",
+  "#0072B2", "#D55E00", "#009E73", "#CC79A7",
+  "#E69F00", "#56B4E9", "#7C3AED", "#0F766E",
+  "#BE123C", "#4E79A7", "#F28E2B", "#59A14F",
+  "#B07AA1", "#9C755F", "#475569", "#111827",
 ];
 
 const HEAT_COLORS = [
-  [0, "#F7FBFF"],
-  [0.35, "#D6E6F2"],
-  [0.70, "#7AA6C2"],
-  [1, "#274C77"],
+  [0, "#F8FAFC"],
+  [0.22, "#DCEAF7"],
+  [0.50, "#78ADD2"],
+  [0.76, "#2B6EA6"],
+  [1, "#08306B"],
 ];
 
 let workbook = null;
@@ -35,15 +37,39 @@ const reportMeta = document.querySelector("#reportMeta");
 const baseLayout = {
   paper_bgcolor: "#ffffff",
   plot_bgcolor: "#ffffff",
-  font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#1c2430" },
-  margin: { l: 58, r: 26, t: 58, b: 112 },
+  font: {
+    family: "Arial, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif",
+    color: "#1F2937",
+    size: 12,
+  },
+  margin: { l: 72, r: 34, t: 74, b: 78 },
   colorway: PALETTE,
-  legend: { orientation: "h", y: -0.22, x: 0, font: { size: 10 } },
+  hoverlabel: { bgcolor: "#111827", bordercolor: "#111827", font: { color: "#ffffff", size: 11 } },
+  legend: { orientation: "h", y: -0.18, x: 0, font: { size: 10 }, bgcolor: "rgba(255,255,255,0)" },
 };
 
 const axisLayoutDefaults = {
-  xaxis: { tickangle: -90, automargin: true },
-  yaxis: { automargin: true },
+  xaxis: {
+    tickangle: 0,
+    automargin: true,
+    showline: true,
+    linecolor: "#94A3B8",
+    linewidth: 1,
+    showgrid: false,
+    zeroline: false,
+    ticks: "outside",
+    tickcolor: "#94A3B8",
+  },
+  yaxis: {
+    automargin: true,
+    showline: false,
+    showgrid: true,
+    gridcolor: "#E8EDF3",
+    gridwidth: 1,
+    zeroline: false,
+    ticks: "outside",
+    tickcolor: "#94A3B8",
+  },
 };
 
 const baseConfig = {
@@ -176,7 +202,7 @@ function updateSummary(data) {
   reportMeta.textContent = `${data.sheetName} · ${data.series.length}개 항목 · ${data.labels.length}개 라벨`;
 }
 
-function renderCharts(data) {
+async function renderCharts(data) {
   syncChartGroupOptions();
   const selected = chartGroup.value;
   if (!selected) {
@@ -184,6 +210,7 @@ function renderCharts(data) {
     return;
   }
 
+  purgePlots();
   chartGrid.innerHTML = "";
   renderedCharts = [];
   emptyState.classList.add("hidden");
@@ -194,7 +221,10 @@ function renderCharts(data) {
     return;
   }
 
-  specs.forEach((spec) => {
+  setStatus(`${selected} 그래프 ${specs.length}개를 렌더링하고 있습니다.`);
+
+  for (let index = 0; index < specs.length; index += 1) {
+    const spec = specs[index];
     const card = document.createElement("article");
     card.className = "chart-card";
     const checkboxId = `chart-select-${spec.group}-${spec.number}`;
@@ -213,18 +243,32 @@ function renderCharts(data) {
     const plot = card.querySelector(".plot");
     const button = card.querySelector("button");
     const checkbox = card.querySelector(".chart-select");
-    const chart = spec.build(data);
-    const layout = mergeLayout(chart.layout, `${data.title}<br>${spec.group} ${String(spec.number).padStart(2, "0")} · ${spec.label}`);
-    Plotly.newPlot(plot, chart.traces, layout, baseConfig);
+
+    try {
+      const chart = polishChart(spec.build(data), data);
+      const layout = mergeLayout(
+        chart.layout || {},
+        `${data.title}<br><span style="font-size:11px;color:#64748B">${spec.group} ${String(spec.number).padStart(2, "0")} · ${spec.label}</span>`,
+        data
+      );
+      await Plotly.newPlot(plot, chart.traces || [], layout, baseConfig);
+    } catch (error) {
+      card.classList.add("chart-error");
+      plot.innerHTML = `<div class="plot-error">그래프 생성 오류<br><small>${escapeHtml(error.message || String(error))}</small></div>`;
+    }
 
     const chartRecord = { plot, data, spec, checkbox };
     renderedCharts.push(chartRecord);
     button.addEventListener("click", () => downloadChart(chartRecord));
     checkbox.addEventListener("change", updateDownloadButtons);
-  });
+
+    document.dispatchEvent(new CustomEvent("g2:chart-rendered", { detail: { card, plot, spec, index } }));
+    if (index < specs.length - 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
 
   updateDownloadButtons();
   setStatus(`${data.sheetName}에서 그래프 ${renderedCharts.length}개를 생성했습니다.`);
+  document.dispatchEvent(new CustomEvent("g2:charts-rendered", { detail: { data, count: renderedCharts.length } }));
 }
 
 function handleChartGroupChange(event) {
@@ -267,6 +311,7 @@ function uniqueChartSpecs() {
 }
 
 function clearChartOutput(message, isError = false) {
+  purgePlots();
   chartGrid.innerHTML = "";
   renderedCharts = [];
   emptyState.classList.remove("hidden");
@@ -656,14 +701,86 @@ function labelDot(data) {
   return { traces: [{ type: "scatter", mode: "markers+text", x: totals.map((d) => d.value), y: totals.map((d) => d.name), text: totals.map((d) => formatNumber(d.value)), textposition: "middle right", marker: { size: 12, color: totals.map((_, i) => color(i)) } }], layout: { xaxis: { title: "합계" }, margin: { l: 110 }, showlegend: false } };
 }
 
-function mergeLayout(layout, title) {
+function polishChart(chart, data) {
+  const next = {
+    traces: Array.isArray(chart?.traces) ? chart.traces.map((trace) => ({ ...trace })) : [],
+    layout: { ...(chart?.layout || {}) },
+  };
+
+  next.traces = next.traces.map((trace, index) => {
+    const item = { ...trace };
+    const color = color(index);
+
+    if (item.type === "bar" || item.type === "waterfall") {
+      item.marker = {
+        ...(item.marker || {}),
+        color: item.marker?.color ?? color,
+        line: { color: "#FFFFFF", width: 0.8, ...(item.marker?.line || {}) },
+      };
+      item.opacity = item.opacity ?? 0.94;
+      if (item.text === undefined && Array.isArray(item.y) && item.orientation !== "h") item.text = item.y.map(formatNumber);
+      if (item.text === undefined && Array.isArray(item.x) && item.orientation === "h") item.text = item.x.map(formatNumber);
+      item.textposition = item.textposition || "auto";
+      item.cliponaxis = false;
+    }
+
+    if (item.type === "scatter" || item.type === "scattergeo" || item.type === "scatterpolar") {
+      const mode = String(item.mode || "");
+      if (item.line || mode.includes("lines")) item.line = { width: 2.25, color, ...(item.line || {}) };
+      if (item.marker || mode.includes("markers")) item.marker = {
+        size: 8,
+        opacity: 0.9,
+        color,
+        ...(item.marker || {}),
+        line: { color: "#FFFFFF", width: 0.9, ...(item.marker?.line || {}) },
+      };
+    }
+
+    if (item.type === "pie") {
+      item.sort = item.sort ?? false;
+      item.textinfo = item.textinfo || "label+percent";
+      item.textfont = { size: 11, ...(item.textfont || {}) };
+      item.marker = { ...(item.marker || {}), line: { color: "#FFFFFF", width: 1.4, ...(item.marker?.line || {}) } };
+    }
+
+    if (item.type === "treemap" || item.type === "sunburst") {
+      item.marker = { ...(item.marker || {}), line: { color: "#FFFFFF", width: 1.2, ...(item.marker?.line || {}) } };
+      item.textfont = { size: 11, ...(item.textfont || {}) };
+    }
+
+    if (item.type === "heatmap" && !item.colorscale) item.colorscale = HEAT_COLORS;
+    if (item.type === "contour") item.line = { width: 1.25, ...(item.line || {}) };
+
+    return item;
+  });
+
+  return next;
+}
+
+function mergeLayout(layout, title, data = null) {
+  const labelCount = data?.labels?.length || 0;
+  const smartAngle = labelCount > 14 ? -45 : labelCount > 8 ? -28 : 0;
+  const xaxis = { ...axisLayoutDefaults.xaxis, ...(layout.xaxis || {}) };
+  if (layout.xaxis?.tickangle === undefined) xaxis.tickangle = smartAngle;
+
   return {
     ...baseLayout,
     ...layout,
-    title: { text: title, x: 0.02, xanchor: "left", font: { size: 15 } },
-    xaxis: { ...axisLayoutDefaults.xaxis, ...(layout.xaxis || {}) },
+    title: {
+      text: title,
+      x: 0.02,
+      xanchor: "left",
+      y: 0.98,
+      yanchor: "top",
+      font: { size: 15, color: "#111827", family: baseLayout.font.family },
+      ...(layout.title || {}),
+    },
+    xaxis,
     yaxis: { ...axisLayoutDefaults.yaxis, ...(layout.yaxis || {}) },
     margin: { ...baseLayout.margin, ...(layout.margin || {}) },
+    autosize: true,
+    uniformtext: { minsize: 9, mode: "hide", ...(layout.uniformtext || {}) },
+    uirevision: "g2-stable",
   };
 }
 
@@ -759,6 +876,7 @@ function resetApp() {
   generateBtn.disabled = true;
   downloadAllBtn.disabled = true;
   selectAllBtn.disabled = true;
+  purgePlots();
   chartGrid.innerHTML = "";
   summary.innerHTML = "";
   emptyState.classList.remove("hidden");
@@ -766,6 +884,14 @@ function resetApp() {
   reportMeta.textContent = "엑셀의 첫 행은 제목/라벨, 첫 열은 항목명으로 인식합니다.";
   setStatus("대기 중");
 }
+
+function purgePlots() {
+  if (!window.Plotly) return;
+  chartGrid.querySelectorAll(".plot").forEach((plot) => {
+    try { Plotly.purge(plot); } catch (_) {}
+  });
+}
+
 
 function cleanName(value) {
   return String(value || "untitled").replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_").slice(0, 80);

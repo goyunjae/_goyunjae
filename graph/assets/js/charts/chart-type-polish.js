@@ -4,7 +4,7 @@
   const ALL = "전체";
   const previous = window.chartSpecs;
   const themes = [
-    ["Mint", ["#45B8AC", "#B8E6A3", "#2F95B8", "#2D64A8", "#F2B75E", "#E56F76"]],
+    ["Paper", ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E"]],
     ["Ocean", ["#1CA7A8", "#76D7C4", "#247BA0", "#173F5F", "#F6D55C", "#ED553B"]],
     ["Forest", ["#2E7D32", "#81C784", "#A5D6A7", "#546E7A", "#F9A825", "#D84315"]],
     ["Sunset", ["#FF6B6B", "#FFD166", "#F4A261", "#2A9D8F", "#264653", "#8E7AD8"]],
@@ -79,8 +79,7 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
-    injectStyle();
-    installThemePicker();
+    // Keep chart definitions and default styling; Studio v2 owns theme controls.
     setTimeout(cleanSelect, 20);
   });
 
@@ -161,7 +160,7 @@
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         colorway: theme.colors,
-        font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#21313A" },
+        font: { family: "Arial, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif", color: "#1F2937", size: 12 },
         hoverlabel: { bgcolor: "#21313A", bordercolor: "#21313A", font: { color: "#ffffff" } },
         legend: { orientation: "h", x: 0, y: -0.22, font: { size: 10, color: "#5E6C84" }, ...(layout.legend || {}) },
         xaxis: axis(layout.xaxis),
@@ -179,10 +178,10 @@
       addValueText(next, values, next.orientation === "h" ? "outside" : "auto");
     }
     if (["scatter", "scatterpolar", "scattergeo"].includes(next.type)) {
-      next.line = { ...(next.line || {}), color, width: next.line?.width || 2.4 };
-      next.marker = { ...(next.marker || {}), color: colorsFor(next, index), size: next.marker?.size || 9, line: { color: "#ffffff", width: 1 } };
-      if (next.mode && !String(next.mode).includes("text")) next.mode = `${next.mode}+text`;
-      addValueText(next, values, next.type === "scattergeo" ? "top center" : "top center");
+      next.line = { ...(next.line || {}), color, width: next.line?.width || 2.2 };
+      next.marker = { ...(next.marker || {}), color: colorsFor(next, index), size: next.marker?.size || 8, line: { color: "#ffffff", width: 0.9 } };
+      // Publication default: do not force value labels onto every point.
+      // Charts that intentionally define text keep their own labels.
     }
     if (next.type === "pie") {
       next.marker = { ...(next.marker || {}), colors: pieColors(next.marker?.colors), line: { color: "#ffffff", width: 2 } };
@@ -206,7 +205,7 @@
   }
 
   function addValueText(trace, values, position) {
-    if (!values || values.length === 0) return;
+    if (!values || values.length === 0 || values.length > 12) return;
     trace.text = values.map(format);
     trace.textposition = position;
     trace.textfont = { color: "#21313A", size: 11, ...(trace.textfont || {}) };
@@ -214,9 +213,15 @@
 
   function traceValues(trace) {
     if (trace.type === "barpolar") return trace.r;
-    if (trace.type === "scattergeo") return trace.marker?.size;
-    if (trace.orientation === "h") return trace.x;
-    return trace.y || trace.r || trace.z;
+    if (trace.type === "scattergeo" && numericArray(trace.marker?.size)) return trace.marker.size;
+    const candidates = trace.orientation === "h"
+      ? [trace.x, trace.y, trace.r, trace.z]
+      : [trace.y, trace.x, trace.r, trace.z];
+    return candidates.find(numericArray) || null;
+  }
+
+  function numericArray(values) {
+    return Array.isArray(values) && values.length > 0 && values.some((value) => Number.isFinite(Number(value)));
   }
 
   function colorsFor(trace, index) {
@@ -383,7 +388,10 @@
   }
 
   function format(value) {
-    return Number(value || 0).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? number.toLocaleString("ko-KR", { maximumFractionDigits: 1 })
+      : String(value ?? "");
   }
 
   function injectStyle() {

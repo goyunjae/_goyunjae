@@ -2,7 +2,7 @@
   if (typeof window.chartSpecs !== "function") return;
 
   const previous = window.chartSpecs;
-  const palette = ["#2F95B8", "#45B8AC", "#B8E6A3", "#2D64A8", "#F2B75E", "#E56F76", "#8E7AD8", "#7FC8A9"];
+  const palette = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E", "#BE123C", "#475569"];
   const groupLabels = {
     BAR: "비교",
     LINE: "추이",
@@ -40,11 +40,9 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
-    injectPremiumStyle();
-    installQuickPresets();
+    // Chart registry only. UI/editor behavior is owned by Studio v2 to avoid
+    // duplicate observers, invalid preset state and panel lag.
     polishStaticText();
-    observeCharts();
-    setTimeout(renameGroups, 30);
   });
 
   function spec(group, label, build) {
@@ -153,7 +151,7 @@
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         colorway: palette,
-        font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#20323A" },
+        font: { family: "Arial, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif", color: "#1F2937", size: 12 },
         hoverlabel: { bgcolor: "#20323A", bordercolor: "#20323A", font: { color: "#ffffff" } },
         margin: { l: 62, r: 40, t: 68, b: 88, ...(layout.margin || {}) },
       },
@@ -169,12 +167,9 @@
       next.marker = { ...(next.marker || {}), color: colorList(values, index), line: { color: "#ffffff", width: 1 } };
     }
     if (next.type === "scatter") {
-      const values = next.y || next.x;
-      if (next.mode && !String(next.mode).includes("text") && Array.isArray(values)) next.mode = `${next.mode}+text`;
-      if (!next.text && Array.isArray(values)) next.text = values.map(format);
-      next.textposition = next.textposition || "top center";
-      next.line = { ...(next.line || {}), color: palette[index % palette.length], width: 2.6 };
-      next.marker = { ...(next.marker || {}), color: palette[index % palette.length], line: { color: "#ffffff", width: 1 } };
+      next.line = { ...(next.line || {}), color: palette[index % palette.length], width: 2.2 };
+      next.marker = { ...(next.marker || {}), color: palette[index % palette.length], size: next.marker?.size || 8, line: { color: "#ffffff", width: 0.9 } };
+      // Keep labels only when the chart builder intentionally supplied them.
     }
     if (next.type === "pie") {
       next.textinfo = "label+value+percent";
@@ -307,8 +302,18 @@
     return palette[index % palette.length];
   }
 
+  function numericTraceValues(trace) {
+    const candidates = trace.orientation === "h" ? [trace.x, trace.y] : [trace.y, trace.x];
+    return candidates.find((values) =>
+      Array.isArray(values) && values.length > 0 && values.some((value) => Number.isFinite(Number(value)))
+    ) || null;
+  }
+
   function format(value) {
-    return Number(value || 0).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? number.toLocaleString("ko-KR", { maximumFractionDigits: 1 })
+      : String(value ?? "");
   }
 
   function injectPremiumStyle() {
