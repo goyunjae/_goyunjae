@@ -285,3 +285,160 @@ body[data-g2-view="data"] .sheet-scroll { max-height: calc(100vh - 230px); }
 @media (max-width: 760px) {
   .g2-palette-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
+
+.g2-object-editor {
+  display: grid;
+  gap: 9px;
+}
+
+.g2-object-manager {
+  display: grid;
+  gap: 3px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 5px;
+  border: 1px solid rgba(15,23,42,.10);
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.g2-object-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 31px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #334155;
+  box-shadow: none;
+  text-align: left;
+}
+.g2-object-row.depth-1 {
+  width: calc(100% - 16px);
+  margin-left: 16px;
+  background: rgba(255,255,255,.72);
+}
+.g2-object-row:hover {
+  transform: none !important;
+  border-color: #cbd5e1;
+  background: #fff;
+  box-shadow: none !important;
+}
+.g2-object-row.active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.g2-object-color {
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(15,23,42,.16);
+  border-radius: 4px;
+}
+.g2-object-name {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.g2-object-row small {
+  color: #94a3b8;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.g2-object-row.active small { color: #60a5fa; }
+.g2-object-note {
+  padding: 7px 8px 7px 24px;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.g2-object-properties {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(15,23,42,.11);
+  border-radius: 7px;
+  background: #fff;
+}
+.g2-object-property-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.g2-object-property-head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.g2-object-property-head strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.g2-object-property-head span {
+  color: #64748b;
+  font-size: 9px;
+}
+.g2-mini-button {
+  min-height: 25px !important;
+  padding: 4px 7px !important;
+  border-radius: 5px !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 9px !important;
+  box-shadow: none !important;
+}
+
+.g2-object-color-control {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 45px;
+  padding: 6px;
+  border: 1px solid #dbe3ec;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.g2-object-color-control:hover { border-color: #93c5fd; }
+.g2-object-color-control .g2-color-input {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  opacity: 0;
+  cursor: pointer;
+}
+.g2-color-chip.large {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+}
+.g2-object-color-control > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+.g2-object-color-control b {
+  color: #334155;
+  font-size: 10px;
+}
+.g2-object-color-control code {
+  color: #64748b;
+  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.g2-studio-v2 .plot.g2-object-clickable { cursor: crosshair; }
