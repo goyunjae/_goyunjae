@@ -161,6 +161,19 @@ test('editor sections collapse and pastel GEO/PCA controls render correctly', as
   await colorsSection.locator('summary').click();
   expect(await colorsSection.evaluate((node) => node.open)).toBeTruthy();
 
+  // Grapher-like Property Manager: Plot / Symbol / Labels / Line / Fill
+  const objectSection = page.locator('details[data-section-key="objects"]');
+  await expect(objectSection).toBeVisible();
+  const propertySections = objectSection.locator('details[data-object-section-key]');
+  expect(await propertySections.count()).toBe(5);
+  for (const key of ['plot','symbol','labels','line','fill']) {
+    await expect(objectSection.locator(`details[data-object-section-key="${key}"]`)).toBeAttached();
+  }
+  const labelsSection = objectSection.locator('details[data-object-section-key="labels"]');
+  expect(await labelsSection.evaluate((node) => node.open)).toBeFalsy();
+  await labelsSection.locator('summary').click();
+  expect(await labelsSection.evaluate((node) => node.open)).toBeTruthy();
+
   // GEO: IDW contour like the supplied reference, with adjustable interval/style
   await page.selectOption('#chartGroup', 'GEO');
   await page.click('#generateBtn');
