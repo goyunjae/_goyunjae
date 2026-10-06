@@ -167,7 +167,7 @@
       next.marker = { ...(next.marker || {}), color: colorList(values, index), line: { color: "#ffffff", width: 1 } };
     }
     if (next.type === "scatter") {
-      const values = next.y || next.x;
+      const values = numericTraceValues(next);
       if (next.mode && !String(next.mode).includes("text") && Array.isArray(values)) next.mode = `${next.mode}+text`;
       if (!next.text && Array.isArray(values)) next.text = values.map(format);
       next.textposition = next.textposition || "top center";
@@ -305,8 +305,18 @@
     return palette[index % palette.length];
   }
 
+  function numericTraceValues(trace) {
+    const candidates = trace.orientation === "h" ? [trace.x, trace.y] : [trace.y, trace.x];
+    return candidates.find((values) =>
+      Array.isArray(values) && values.length > 0 && values.some((value) => Number.isFinite(Number(value)))
+    ) || null;
+  }
+
   function format(value) {
-    return Number(value || 0).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const number = Number(value);
+    return Number.isFinite(number)
+      ? number.toLocaleString("ko-KR", { maximumFractionDigits: 1 })
+      : String(value ?? "");
   }
 
   function injectPremiumStyle() {
