@@ -76,7 +76,6 @@
           showscale: true,
           colorbar: { title: { text: '값' }, thickness: 11, len: 0.6 },
           opacity: 0.9,
-          line: { color: '#FFFFFF', width: 1.2 },
         },
         hovertemplate: '<b>%{customdata[0]}</b><br>값 %{customdata[1]:,.2f}<br>위도 %{customdata[2]:.6f}<br>경도 %{customdata[3]:.6f}<extra></extra>',
         name: '관측점',
@@ -283,7 +282,6 @@
       marker: {
         size: 9,
         color: '#DFA0AF',
-        line: { color: '#7E5963', width: 1 },
         opacity: 0.96,
       },
       hovertemplate: '<b>%{customdata[0]}</b><br>값 %{customdata[1]:,.2f}<br>%{customdata[2]:.6f}, %{customdata[3]:.6f}<extra></extra>',
