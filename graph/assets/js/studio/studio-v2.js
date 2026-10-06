@@ -167,6 +167,9 @@
     const layout = plot._fullLayout || plot.layout || {};
     const title = stripHtml(layout.title?.text || '');
     const isGeo = plot.data.some((trace) => ['scattergeo', 'choropleth'].includes(trace.type));
+    const isContour = plot.data.some((trace) => trace.type === 'contour');
+    const isSpatialCard = /^GEO\b/i.test(cardTitle) || isGeo || isContour;
+    const isAnalysisCard = /^ANALYSIS\b/i.test(cardTitle);
     const isLine = plot.data.some((trace) => trace.type === 'scatter' && String(trace.mode || '').includes('lines'));
     const hasMarkers = plot.data.some((trace) => String(trace.mode || '').includes('markers') || trace.type === 'scattergeo');
 
@@ -193,7 +196,7 @@
         </div>
         ${field('Grid', '<select id="g2Grid"><option value="light">Light</option><option value="none">None</option><option value="strong">Strong</option></select>')}
       </section>
-      ${isGeo ? mapEditorHtml(plot) : ''}
+      ${(isSpatialCard || isAnalysisCard) ? spatialEditorHtml(plot, isSpatialCard, isAnalysisCard) : ''}
       <section class="g2-editor-actions">
         <button type="button" id="g2Apply">Apply</button>
         <button type="button" id="g2Regenerate" class="secondary">Regenerate</button>
@@ -206,22 +209,26 @@
   function field(label, control) { return `<div class="g2-field"><label>${label}</label>${control}</div>`; }
   function paletteSelect() { return `<select id="g2Palette">${Object.keys(PALETTES).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select>`; }
 
-  function mapEditorHtml(plot) {
+  function spatialEditorHtml(plot, isSpatial, isAnalysis) {
     const science = window.G2ScienceSettings || {};
     const stationText = science.stationText || stationsFromPlot(plot);
     const rings = Array.isArray(science.ringDistances) ? science.ringDistances.join(', ') : '25, 50, 100';
     const interval = Number(science.contourInterval || 25);
     const regionCount = Number(science.regionCount || 3);
-    return `
-      <section class="g2-editor-section g2-map-editor">
-        <h3>Map & spatial analysis</h3>
+    const spatialFields = isSpatial ? `
         ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="서울,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
         <div class="g2-editor-grid two">
           ${field('Ring distances (km)', `<input id="g2Rings" type="text" value="${escapeHtml(rings)}">`)}
           ${field('Contour interval (km)', `<input id="g2ContourInterval" type="number" min="1" step="1" value="${interval}">`)}
         </div>
-        ${field('PCA region count', `<input id="g2RegionCount" type="number" min="2" max="6" step="1" value="${regionCount}">`)}
-        <p class="g2-help">정점 거리 링은 QGIS의 multi-ring buffer 개념처럼 일정 거리 간격을 표시하고, 거리 등고선은 관측점까지의 최근접 거리장을 km 단위로 계산합니다.</p>
+      ` : '';
+    const analysisFields = isAnalysis ? field('Automatic PCA regions', `<input id="g2RegionCount" type="number" min="2" max="6" step="1" value="${regionCount}">`) : '';
+    return `
+      <section class="g2-editor-section g2-map-editor">
+        <h3>${isSpatial ? 'Map & spatial analysis' : 'PCA analysis'}</h3>
+        ${spatialFields}
+        ${analysisFields}
+        <p class="g2-help">${isSpatial ? '거리 링은 지정한 반경(km)을 표시하고, 거리 등고선은 관측점까지의 최근접 거리장을 km 단위로 계산합니다. 값을 바꾼 뒤 Regenerate를 누르세요.' : '영역 수를 바꾼 뒤 Regenerate를 누르면 PCA 점수 공간에서 k-means 영역을 다시 계산합니다.'}</p>
       </section>
     `;
   }
