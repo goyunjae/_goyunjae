@@ -630,7 +630,7 @@
         const count = Math.max(trace.x?.length || 0, trace.y?.length || 0);
         const hasPointOverrides = Object.keys(pointOverrides).length > 0;
         update['marker.color'] = hasPointOverrides
-          ? Array.from({ length: count }, (_, i) => pointOverrides[i] || color)
+          ? [Array.from({ length: count }, (_, i) => pointOverrides[i] || color)]
           : color;
         update['marker.line.color'] = '#FFFFFF';
         update['marker.line.width'] = 0.8;
@@ -662,7 +662,7 @@
             const count = editablePointCount(trace);
             const hasPointOverrides = Object.keys(pointOverrides).length > 0 && count > 0;
             update['marker.color'] = hasPointOverrides
-              ? Array.from({ length: count }, (_, i) => pointOverrides[i] || color)
+              ? [Array.from({ length: count }, (_, i) => pointOverrides[i] || color)]
               : color;
           }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;
