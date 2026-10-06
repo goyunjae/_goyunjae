@@ -100,6 +100,23 @@ if (windowMock.G2PrecisionMap) {
   });
   assert(strict.stations.length === 1, "Strict GEO resolver should keep only known coordinates.");
   assert(strict.missing.length === 1 && strict.missing[0] === "UNKNOWN_PLACE", "Strict GEO resolver should report missing coordinates.");
+
+  // User workflow: coordinates refer to row/series names such as A사업/B사업/C사업.
+  windowMock.G2ScienceSettings.stationText = [
+    "A사업,37.5665,126.978",
+    "B사업,35.1796,129.0756",
+    "C사업,35.8714,128.6014",
+  ].join("\n");
+  const rowMatched = windowMock.G2PrecisionMap.resolveStationsStrict({
+    labels: ["2024", "2025", "2026"],
+    series: ["A사업", "B사업", "C사업"],
+    values: [[120,145,170],[90,110,132],[60,72,95]],
+  });
+  assert(rowMatched.dimension === "series", "GEO should select row/series names when coordinates match rows.");
+  assert(rowMatched.stations.length === 3, "GEO row coordinate matching should resolve all three businesses.");
+  assert(rowMatched.stations.map((s) => s.name).join(",") === "A사업,B사업,C사업", "GEO row coordinate names mismatch.");
+  assert(Math.abs(rowMatched.stations[0].lat - 37.5665) < 1e-9, "A사업 latitude mismatch.");
+  assert(rowMatched.stations[0].value === 435, "A사업 value should be the row total.");
 }
 
 const cases = [
