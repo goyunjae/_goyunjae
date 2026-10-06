@@ -20,8 +20,22 @@ test('all graph groups render in the real browser', async ({ page }) => {
   const results = [];
   for (const group of groups) {
     await page.selectOption('#chartGroup', group);
+    const expectedCards = await page.evaluate((selectedGroup) =>
+      window.chartSpecs().filter((spec) => spec.group === selectedGroup).length,
+      group
+    );
+
     await page.click('#generateBtn');
-    await page.waitForTimeout(700);
+    await expect(page.locator('.chart-card')).toHaveCount(expectedCards, { timeout: 30000 });
+    await page.waitForFunction(
+      (expected) => {
+        const plots = Array.from(document.querySelectorAll('.chart-card .plot'));
+        return plots.length === expected &&
+          plots.every((plot) => Boolean(plot._fullLayout) || Boolean(plot.querySelector('.plot-error')));
+      },
+      expectedCards,
+      { timeout: 30000 }
+    );
 
     const cards = await page.locator('.chart-card').count();
     const errors = await page.locator('.plot-error').allTextContents();
