@@ -1,10 +1,11 @@
 (function () {
   'use strict';
 
-  const VERSION = '20261006.2';
+  const VERSION = '20261006.3';
   const state = {
     selectedCard: null,
     selectedPlot: null,
+    selectedObject: null,
     view: 'preview',
     editorTimer: null,
   };
@@ -144,6 +145,11 @@
     if (!card) return;
     state.selectedCard = card;
     state.selectedPlot = card.querySelector('.plot');
+    state.selectedObject = normalizeSelectedObject(state.selectedPlot, state.selectedPlot?._g2SelectedObject);
+    if (state.selectedPlot) {
+      state.selectedPlot._g2SelectedObject = state.selectedObject;
+      wirePlotObjectEvents(state.selectedPlot);
+    }
     document.querySelectorAll('.chart-card.is-selected').forEach((node) => node.classList.remove('is-selected'));
     card.classList.add('is-selected');
     renderEditor();
@@ -155,6 +161,7 @@
   function renderEmptyEditor() {
     state.selectedCard = null;
     state.selectedPlot = null;
+    state.selectedObject = null;
     const body = document.querySelector('#g2EditorBody');
     const badge = document.querySelector('#g2EditorBadge');
     if (badge) badge.textContent = 'No chart';
@@ -194,9 +201,10 @@
           <div class="g2-subhead"><span>Publication palette</span><small>색상 세트를 클릭하면 바로 적용됩니다.</small></div>
           <div id="g2PaletteGrid" class="g2-palette-grid">${paletteButtons(plot)}</div>
         </div>
-        <div class="g2-color-editor">
-          <div class="g2-subhead"><span>Individual colors</span><small>색상칩을 눌러 범례/항목별 색을 직접 바꿀 수 있습니다.</small></div>
-          <div id="g2ColorTargets" class="g2-color-targets">${colorEditorHtml(plot)}</div>
+        <div class="g2-object-editor">
+          <div class="g2-subhead"><span>Objects</span><small>Grapher처럼 개체를 선택한 뒤 속성을 수정합니다.</small></div>
+          <div id="g2ObjectManager" class="g2-object-manager">${objectManagerHtml(plot)}</div>
+          <div id="g2ObjectProperties" class="g2-object-properties">${selectedObjectPropertiesHtml(plot)}</div>
         </div>
         <label class="g2-check"><input id="g2Legend" type="checkbox" ${layout.showlegend === false ? '' : 'checked'}> Show legend</label>
         <label class="g2-check"><input id="g2Labels" type="checkbox" checked> Show labels</label>
@@ -233,69 +241,189 @@
     }).join('');
   }
 
-  function colorEditorHtml(plot) {
-    const targets = colorTargets(plot);
-    if (!targets.length) return '<p class="g2-help">이 그래프는 연속형 색상 스케일을 사용합니다. 위 팔레트 세트로 색상 스케일을 변경하세요.</p>';
-    return targets.map((target) => `
-      <label class="g2-color-target">
+  function objectManagerHtml(plot) {
+    const selected = normalizeSelectedObject(plot, state.selectedObject || plot._g2SelectedObject);
+    const rows = [];
+
+    Array.from(plot.data || []).forEach((trace, traceIndex) => {
+      const traceLabel = trace.name || traceObjectLabel(trace, traceIndex);
+      const traceTarget = { kind: 'trace', traceIndex, pointIndex: null, label: traceLabel };
+      rows.push(objectRowHtml(plot, traceTarget, 0));
+
+      const pointCount = editablePointCount(trace);
+      if (pointCount > 0 && pointCount <= 40) {
+        const labels = editablePointLabels(trace, pointCount);
+        for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
+          rows.push(objectRowHtml(plot, {
+            kind: 'point',
+            traceIndex,
+            pointIndex,
+            label: labels[pointIndex] || `Item ${pointIndex + 1}`,
+          }, 1));
+        }
+      } else if (pointCount > 40) {
+        rows.push(`<div class="g2-object-note">${escapeHtml(traceLabel)}: ${pointCount}개 항목 · 그래프에서 원하는 점을 클릭해 선택</div>`);
+      }
+    });
+
+    return rows.join('') || '<p class="g2-help">편집 가능한 개체가 없습니다.</p>';
+  }
+
+  function objectRowHtml(plot, target, depth) {
+    const selected = sameObject(target, normalizeSelectedObject(plot, state.selectedObject || plot._g2SelectedObject));
+    const color = objectColor(plot, target);
+    const typeLabel = target.kind === 'point' ? 'item' : 'series';
+    return `
+      <button
+        type="button"
+        class="g2-object-row ${selected ? 'active' : ''} depth-${depth}"
+        data-kind="${target.kind}"
+        data-trace-index="${target.traceIndex}"
+        ${target.pointIndex == null ? '' : `data-point-index="${target.pointIndex}"`}
+        title="${escapeHtml(target.label)}"
+      >
+        <span class="g2-object-color" style="background:${color}"></span>
+        <span class="g2-object-name">${escapeHtml(target.label)}</span>
+        <small>${typeLabel}</small>
+      </button>
+    `;
+  }
+
+  function selectedObjectPropertiesHtml(plot) {
+    const target = normalizeSelectedObject(plot, state.selectedObject || plot._g2SelectedObject);
+    if (!target) return '<p class="g2-help">왼쪽 Objects 목록이나 그래프 개체를 클릭하세요.</p>';
+    const trace = plot.data?.[target.traceIndex];
+    if (!trace) return '<p class="g2-help">선택한 개체를 찾을 수 없습니다.</p>';
+
+    const color = objectColor(plot, target);
+    const kindText = target.kind === 'point' ? '개별 항목' : '시리즈 / 레이어';
+    const detail = target.kind === 'point'
+      ? `Trace ${target.traceIndex + 1} · Item ${Number(target.pointIndex) + 1}`
+      : `Trace ${target.traceIndex + 1} · ${trace.type || 'plot'}`;
+
+    return `
+      <div class="g2-object-property-head">
+        <div>
+          <strong>${escapeHtml(target.label)}</strong>
+          <span>${kindText} · ${escapeHtml(detail)}</span>
+        </div>
+        <button type="button" id="g2ResetObjectColor" class="g2-mini-button">Reset</button>
+      </div>
+      <label class="g2-object-color-control">
         <input
+          id="g2SelectedObjectColor"
           class="g2-color-input"
           type="color"
-          value="${target.color}"
+          value="${color}"
           data-kind="${target.kind}"
           data-trace-index="${target.traceIndex}"
           ${target.pointIndex == null ? '' : `data-point-index="${target.pointIndex}"`}
           aria-label="${escapeHtml(target.label)} 색상"
         >
-        <span class="g2-color-chip" style="background:${target.color}"></span>
-        <span class="g2-color-label">${escapeHtml(target.label)}</span>
-        <code>${target.color.toUpperCase()}</code>
+        <span class="g2-color-chip large" style="background:${color}"></span>
+        <span>
+          <b>Color</b>
+          <code>${color.toUpperCase()}</code>
+        </span>
       </label>
-    `).join('');
+      <p class="g2-help">${objectHelp(trace, target)}</p>
+    `;
   }
 
-  function colorTargets(plot) {
-    const palette = PALETTES[plot._g2PaletteName || '색각 안전'] || PALETTES['색각 안전'];
-    const traces = Array.from(plot.data || []);
-    if (!traces.length) return [];
-    if (traces.length === 1 && ['heatmap', 'contour', 'choropleth'].includes(traces[0].type)) return [];
-
-    if (traces.length === 1) {
-      const trace = traces[0];
-      const labels = pointLabels(trace);
-      const supportsPointColors = ['pie', 'treemap', 'sunburst', 'bar'].includes(trace.type) && labels.length > 1 && labels.length <= 16;
-      if (supportsPointColors) {
-        return labels.map((label, pointIndex) => ({
-          kind: 'point',
-          traceIndex: 0,
-          pointIndex,
-          label,
-          color: plot._g2PointColors?.[0]?.[pointIndex] || currentPointColor(trace, pointIndex, palette[pointIndex % palette.length]),
-        }));
-      }
+  function objectHelp(trace, target) {
+    if (target.kind === 'point') {
+      if (trace.type === 'bar' || trace.type === 'waterfall' || trace.type === 'funnel') return '이 항목의 채움색만 변경합니다.';
+      if (['pie', 'treemap', 'sunburst'].includes(trace.type)) return '이 조각/영역의 채움색만 변경합니다.';
+      return '이 데이터 포인트의 마커 색만 변경합니다.';
     }
-
-    return traces
-      .map((trace, traceIndex) => ({
-        kind: 'trace',
-        traceIndex,
-        pointIndex: null,
-        label: trace.name || `Series ${traceIndex + 1}`,
-        color: plot._g2TraceColors?.[traceIndex] || currentTraceColor(trace, palette[traceIndex % palette.length]),
-      }))
-      .filter((target) => target.color);
+    if (trace.type === 'indicator') return 'KPI 숫자 색상을 변경합니다.';
+    if (['heatmap', 'contour', 'choropleth'].includes(trace.type)) return '연속형 레이어는 위 Publication palette에서 전체 색상 스케일을 변경합니다.';
+    if (trace.fill && trace.fill !== 'none') return '이 시리즈의 선과 채움색을 함께 변경합니다.';
+    return '이 시리즈의 선/마커/채움 기본색을 변경합니다.';
   }
 
-  function pointLabels(trace) {
-    const labels = Array.isArray(trace.labels) ? trace.labels
-      : Array.isArray(trace.x) ? trace.x
-      : Array.isArray(trace.y) ? trace.y
-      : [];
-    return labels.map((value, index) => String(value ?? `Item ${index + 1}`));
+  function normalizeSelectedObject(plot, candidate) {
+    if (!plot?.data?.length) return null;
+    const traceIndex = Number(candidate?.traceIndex);
+    const validTraceIndex = Number.isInteger(traceIndex) && traceIndex >= 0 && traceIndex < plot.data.length ? traceIndex : 0;
+    const trace = plot.data[validTraceIndex];
+    const pointIndex = Number(candidate?.pointIndex);
+    const wantsPoint = candidate?.kind === 'point' && supportsPointEditing(trace) &&
+      Number.isInteger(pointIndex) && pointIndex >= 0 && pointIndex < editablePointCount(trace);
+
+    return wantsPoint ? {
+      kind: 'point',
+      traceIndex: validTraceIndex,
+      pointIndex,
+      label: editablePointLabels(trace, editablePointCount(trace))[pointIndex] || `Item ${pointIndex + 1}`,
+    } : {
+      kind: 'trace',
+      traceIndex: validTraceIndex,
+      pointIndex: null,
+      label: trace.name || traceObjectLabel(trace, validTraceIndex),
+    };
+  }
+
+  function sameObject(a, b) {
+    return Boolean(a && b && a.kind === b.kind && a.traceIndex === b.traceIndex &&
+      (a.kind !== 'point' || a.pointIndex === b.pointIndex));
+  }
+
+  function traceObjectLabel(trace, traceIndex) {
+    const type = String(trace.type || 'plot').replace(/scatter/i, 'series');
+    return `${type} ${traceIndex + 1}`;
+  }
+
+  function supportsPointEditing(trace) {
+    if (!trace) return false;
+    if (['bar', 'waterfall', 'funnel', 'pie', 'treemap', 'sunburst'].includes(trace.type)) return true;
+    if (['scatter', 'scattergeo', 'scatterpolar'].includes(trace.type)) {
+      const mode = String(trace.mode || '');
+      if (!mode.includes('markers')) return false;
+      const colors = trace.marker?.color;
+      const numericScale = Array.isArray(colors) && colors.length > 0 &&
+        colors.every((value) => Number.isFinite(Number(value)));
+      return !numericScale;
+    }
+    return false;
+  }
+
+  function editablePointCount(trace) {
+    if (!supportsPointEditing(trace)) return 0;
+    if (Array.isArray(trace.values)) return trace.values.length;
+    if (Array.isArray(trace.labels)) return trace.labels.length;
+    if (Array.isArray(trace.x)) return trace.x.length;
+    if (Array.isArray(trace.y)) return trace.y.length;
+    if (Array.isArray(trace.lat)) return trace.lat.length;
+    return 0;
+  }
+
+  function editablePointLabels(trace, count) {
+    let source = [];
+    if (Array.isArray(trace.labels)) source = trace.labels;
+    else if (trace.type === 'bar' && trace.orientation === 'h' && Array.isArray(trace.y)) source = trace.y;
+    else if (Array.isArray(trace.text) && trace.text.length === count) source = trace.text;
+    else if (Array.isArray(trace.x)) source = trace.x;
+    else if (Array.isArray(trace.y)) source = trace.y;
+    else if (Array.isArray(trace.lat)) source = trace.lat.map((lat, i) => `${lat}, ${trace.lon?.[i] ?? ''}`);
+    return Array.from({ length: count }, (_, i) => stripHtml(String(source[i] ?? `Item ${i + 1}`)).split('\n')[0]);
+  }
+
+  function objectColor(plot, target) {
+    const palette = PALETTES[plot._g2PaletteName || '색각 안전'] || PALETTES['색각 안전'];
+    const trace = plot.data?.[target.traceIndex];
+    const fallback = palette[target.traceIndex % palette.length] || '#2563EB';
+    if (!trace) return fallback;
+
+    if (target.kind === 'point') {
+      return plot._g2PointColors?.[target.traceIndex]?.[target.pointIndex] ||
+        currentPointColor(trace, target.pointIndex, plot._g2TraceColors?.[target.traceIndex] || fallback);
+    }
+    return plot._g2TraceColors?.[target.traceIndex] || currentTraceColor(trace, fallback);
   }
 
   function currentTraceColor(trace, fallback) {
-    const candidates = [trace.line?.color, trace.marker?.color];
+    const candidates = [trace.line?.color, trace.marker?.color, trace.fillcolor, trace.number?.font?.color];
     for (const value of candidates) {
       if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) return value;
     }
@@ -309,6 +437,63 @@
       if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) return value;
     }
     return fallback;
+  }
+
+  function selectObject(plot, target, rerender = true) {
+    const normalized = normalizeSelectedObject(plot, target);
+    if (!normalized) return;
+    plot._g2SelectedObject = normalized;
+    if (state.selectedPlot === plot) state.selectedObject = normalized;
+    if (rerender && state.selectedPlot === plot) renderEditor();
+  }
+
+  function wirePlotObjectEvents(plot) {
+    if (!plot || plot._g2ObjectEventsBound || typeof plot.on !== 'function') return;
+    plot._g2ObjectEventsBound = true;
+    plot.on('plotly_click', (event) => {
+      const point = event?.points?.[0];
+      if (!point) return;
+      const traceIndex = Number(point.curveNumber);
+      const trace = plot.data?.[traceIndex];
+      if (!trace) return;
+      const rawPointIndex = Array.isArray(point.pointNumber) ? point.pointNumber[0] : point.pointNumber;
+      const pointIndex = Number(rawPointIndex);
+      const target = supportsPointEditing(trace) && Number.isInteger(pointIndex)
+        ? { kind: 'point', traceIndex, pointIndex }
+        : { kind: 'trace', traceIndex, pointIndex: null };
+      selectObject(plot, target, true);
+    });
+  }
+
+  function setObjectColor(plot, target, color) {
+    if (!plot || !target || !/^#[0-9a-f]{6}$/i.test(color)) return;
+    const normalized = normalizeSelectedObject(plot, target);
+    if (!normalized) return;
+    if (normalized.kind === 'point') {
+      plot._g2PointColors = plot._g2PointColors || {};
+      plot._g2PointColors[normalized.traceIndex] = plot._g2PointColors[normalized.traceIndex] || {};
+      plot._g2PointColors[normalized.traceIndex][normalized.pointIndex] = color.toUpperCase();
+    } else {
+      plot._g2TraceColors = plot._g2TraceColors || {};
+      plot._g2TraceColors[normalized.traceIndex] = color.toUpperCase();
+    }
+    plot._g2SelectedObject = normalized;
+    state.selectedObject = normalized;
+    applyEditor();
+  }
+
+  function resetObjectColor(plot, target) {
+    const normalized = normalizeSelectedObject(plot, target);
+    if (!normalized) return;
+    if (normalized.kind === 'point') {
+      if (plot._g2PointColors?.[normalized.traceIndex]) {
+        delete plot._g2PointColors[normalized.traceIndex][normalized.pointIndex];
+      }
+    } else if (plot._g2TraceColors) {
+      delete plot._g2TraceColors[normalized.traceIndex];
+    }
+    applyEditor();
+    renderEditor();
   }
 
   function spatialEditorHtml(plot, isSpatial, isAnalysis) {
@@ -355,28 +540,38 @@
       });
     });
 
-    panel.querySelectorAll('.g2-color-input').forEach((input) => {
-      input.addEventListener('input', () => {
-        const traceIndex = Number(input.dataset.traceIndex);
-        const color = input.value.toUpperCase();
-        if (input.dataset.kind === 'point') {
-          const pointIndex = Number(input.dataset.pointIndex);
-          plot._g2PointColors = plot._g2PointColors || {};
-          plot._g2PointColors[traceIndex] = plot._g2PointColors[traceIndex] || {};
-          plot._g2PointColors[traceIndex][pointIndex] = color;
-        } else {
-          plot._g2TraceColors = plot._g2TraceColors || {};
-          plot._g2TraceColors[traceIndex] = color;
-        }
-        input.closest('.g2-color-target')?.querySelector('.g2-color-chip')?.style.setProperty('background', color);
-        const code = input.closest('.g2-color-target')?.querySelector('code');
-        if (code) code.textContent = color;
-        applyEditor();
+    panel.querySelectorAll('.g2-object-row').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectObject(plot, {
+          kind: button.dataset.kind,
+          traceIndex: Number(button.dataset.traceIndex),
+          pointIndex: button.dataset.pointIndex == null ? null : Number(button.dataset.pointIndex),
+        }, true);
       });
     });
 
+    panel.querySelector('#g2SelectedObjectColor')?.addEventListener('input', (event) => {
+      const input = event.currentTarget;
+      const target = {
+        kind: input.dataset.kind,
+        traceIndex: Number(input.dataset.traceIndex),
+        pointIndex: input.dataset.pointIndex == null ? null : Number(input.dataset.pointIndex),
+      };
+      const color = input.value.toUpperCase();
+      setObjectColor(plot, target, color);
+      input.closest('.g2-object-color-control')?.querySelector('.g2-color-chip')?.style.setProperty('background', color);
+      const code = input.closest('.g2-object-color-control')?.querySelector('code');
+      if (code) code.textContent = color;
+      const activeRow = panel.querySelector('.g2-object-row.active .g2-object-color');
+      if (activeRow) activeRow.style.background = color;
+    });
+
+    panel.querySelector('#g2ResetObjectColor')?.addEventListener('click', () => {
+      resetObjectColor(plot, state.selectedObject || plot._g2SelectedObject);
+    });
+
     panel.querySelectorAll('input,select,textarea').forEach((control) => {
-      if (control.classList.contains('g2-color-input')) return;
+      if (control.id === 'g2SelectedObjectColor') return;
       const eventName = control.tagName === 'TEXTAREA' ? 'change' : 'input';
       control.addEventListener(eventName, () => {
         if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2RegionCount')) {
@@ -452,6 +647,9 @@
           update['line.color'] = color;
           update['line.width'] = lineWidth;
         }
+        if (trace.fill && trace.fill !== 'none') {
+          update.fillcolor = hexToRgba(color, 0.22);
+        }
         if (trace.marker) {
           const numericColors = Array.isArray(trace.marker.color) &&
             trace.marker.color.length > 0 &&
@@ -460,8 +658,10 @@
             update['marker.colorscale'] = paletteScale(palette);
             update['marker.showscale'] = trace.marker.showscale !== false;
           } else {
-            update['marker.color'] = Array.isArray(trace.marker.color)
-              ? trace.marker.color.map((_, i) => pointOverrides[i] || palette[i % palette.length])
+            const count = editablePointCount(trace);
+            const hasPointOverrides = Object.keys(pointOverrides).length > 0 && count > 0;
+            update['marker.color'] = hasPointOverrides
+              ? Array.from({ length: count }, (_, i) => pointOverrides[i] || color)
               : color;
           }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;
@@ -545,6 +745,14 @@
       if (status) status.textContent = 'Grid Data가 수정되었습니다. 그래프 생성 버튼을 누르면 반영됩니다.';
     }, 160), { passive: true });
   }
+
+  function hexToRgba(hex, alpha) {
+    const value = String(hex || '').replace('#', '');
+    if (!/^[0-9a-f]{6}$/i.test(value)) return `rgba(37,99,235,${alpha})`;
+    const number = parseInt(value, 16);
+    return `rgba(${(number >> 16) & 255},${(number >> 8) & 255},${number & 255},${alpha})`;
+  }
+
 
   function paletteScale(colors) {
     if (!Array.isArray(colors) || colors.length === 0) return [[0, '#F8FAFC'], [1, '#0072B2']];
