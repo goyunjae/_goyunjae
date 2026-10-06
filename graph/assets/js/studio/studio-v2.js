@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const VERSION = '20261006.1';
+  const VERSION = '20261006.2';
   const state = {
     selectedCard: null,
     selectedPlot: null,
@@ -10,16 +10,21 @@
   };
 
   const PALETTES = {
-    '논문 기본': ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#F0E442', '#000000'],
-    'Nature': ['#3B6FB6', '#E07A5F', '#59A14F', '#B07AA1', '#F2CC8F', '#4E79A7', '#76B7B2', '#9C755F'],
-    'Ocean': ['#003F5C', '#2F4B7C', '#665191', '#A05195', '#D45087', '#F95D6A', '#FF7C43', '#FFA600'],
-    'Forest': ['#1B4332', '#2D6A4F', '#40916C', '#52B788', '#74C69D', '#95D5B2', '#B7E4C7', '#D8F3DC'],
-    'Viridis': ['#440154', '#482878', '#3E4A89', '#31688E', '#26828E', '#1F9E89', '#6CCE59', '#B6DE2B', '#FDE725'],
-    'Tableau': ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'],
-    'Mono': ['#111827', '#374151', '#6B7280', '#9CA3AF', '#D1D5DB', '#E5E7EB'],
-    'Purple': ['#2E1065', '#4C1D95', '#6D28D9', '#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD'],
-    'Sunset': ['#5F0F40', '#9A031E', '#FB8B24', '#E36414', '#0F4C5C', '#2A9D8F', '#E9C46A'],
-    'Earth': ['#283618', '#606C38', '#A3B18A', '#DDA15E', '#BC6C25', '#7F5539', '#9C6644'],
+    '색각 안전': ['#0072B2', '#E69F00', '#009E73', '#D55E00', '#CC79A7', '#56B4E9', '#F0E442', '#000000'],
+    '논문 기본': ['#3B5BA7', '#D65F5F', '#3A923A', '#8C6BB1', '#E3A018', '#4C9FBE', '#8C564B', '#6B7280'],
+    'Muted': ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#B279A2', '#FF9DA6', '#9D755D'],
+    'High contrast': ['#1F77B4', '#D62728', '#2CA02C', '#9467BD', '#FF7F0E', '#17BECF', '#8C564B', '#111111'],
+    'Viridis': ['#440154', '#414487', '#2A788E', '#22A884', '#7AD151', '#FDE725'],
+    'Gray scale': ['#111111', '#333333', '#555555', '#777777', '#999999', '#BBBBBB', '#DDDDDD'],
+    'Blue scale': ['#0B1F33', '#123A5A', '#1E5A85', '#3478A9', '#5B96C3', '#8BB5D4', '#BDD3E6'],
+    'Red scale': ['#3B0A0A', '#6D1616', '#982626', '#B83A3A', '#D65A5A', '#E78A8A', '#F3BABA'],
+    'Green scale': ['#0B2E20', '#155239', '#1F7552', '#32966C', '#58B488', '#8DCEAD', '#C2E5D2'],
+    'Purple scale': ['#21103A', '#3C1D62', '#5A2A86', '#7840A6', '#9666BD', '#B792D1', '#D8C4E5'],
+    '단색 · Black': Array(12).fill('#222222'),
+    '단색 · Navy': Array(12).fill('#1F3A5F'),
+    '단색 · Blue': Array(12).fill('#2563EB'),
+    '단색 · Red': Array(12).fill('#B42318'),
+    '단색 · Green': Array(12).fill('#18794E'),
   };
 
   window.addEventListener('DOMContentLoaded', init);
@@ -183,7 +188,15 @@
         </div>
         <div class="g2-editor-grid two">
           ${field('Canvas', '<select id="g2Canvas"><option value="#FFFFFF">White</option><option value="#F8FAFC">Soft</option><option value="#111827">Ink</option></select>')}
-          ${field('Palette', paletteSelect())}
+          ${field('Grid', '<select id="g2Grid"><option value="light">Light</option><option value="none">None</option><option value="strong">Strong</option></select>')}
+        </div>
+        <div class="g2-palette-block">
+          <div class="g2-subhead"><span>Publication palette</span><small>색상 세트를 클릭하면 바로 적용됩니다.</small></div>
+          <div id="g2PaletteGrid" class="g2-palette-grid">${paletteButtons(plot)}</div>
+        </div>
+        <div class="g2-color-editor">
+          <div class="g2-subhead"><span>Individual colors</span><small>색상칩을 눌러 범례/항목별 색을 직접 바꿀 수 있습니다.</small></div>
+          <div id="g2ColorTargets" class="g2-color-targets">${colorEditorHtml(plot)}</div>
         </div>
         <label class="g2-check"><input id="g2Legend" type="checkbox" ${layout.showlegend === false ? '' : 'checked'}> Show legend</label>
         <label class="g2-check"><input id="g2Labels" type="checkbox" checked> Show labels</label>
@@ -194,7 +207,6 @@
           ${field('Line width', `<input id="g2LineWidth" type="range" min="0.5" max="6" step="0.25" value="2.25" ${isLine ? '' : 'disabled'}>`)}
           ${field('Marker size', `<input id="g2MarkerSize" type="range" min="3" max="24" step="1" value="9" ${hasMarkers ? '' : 'disabled'}>`)}
         </div>
-        ${field('Grid', '<select id="g2Grid"><option value="light">Light</option><option value="none">None</option><option value="strong">Strong</option></select>')}
       </section>
       ${(isSpatialCard || isAnalysisCard) ? spatialEditorHtml(plot, isSpatialCard, isAnalysisCard) : ''}
       <section class="g2-editor-actions">
@@ -207,7 +219,97 @@
   }
 
   function field(label, control) { return `<div class="g2-field"><label>${label}</label>${control}</div>`; }
-  function paletteSelect() { return `<select id="g2Palette">${Object.keys(PALETTES).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select>`; }
+
+  function paletteButtons(plot) {
+    const active = plot._g2PaletteName || '색각 안전';
+    return Object.entries(PALETTES).map(([name, colors]) => {
+      const swatches = colors.slice(0, 6).map((color) => `<span style="background:${color}"></span>`).join('');
+      return `
+        <button type="button" class="g2-palette-card ${name === active ? 'active' : ''}" data-palette="${escapeHtml(name)}" aria-pressed="${name === active}">
+          <span class="g2-palette-swatches">${swatches}</span>
+          <strong>${escapeHtml(name)}</strong>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function colorEditorHtml(plot) {
+    const targets = colorTargets(plot);
+    if (!targets.length) return '<p class="g2-help">이 그래프는 연속형 색상 스케일을 사용합니다. 위 팔레트 세트로 색상 스케일을 변경하세요.</p>';
+    return targets.map((target) => `
+      <label class="g2-color-target">
+        <input
+          class="g2-color-input"
+          type="color"
+          value="${target.color}"
+          data-kind="${target.kind}"
+          data-trace-index="${target.traceIndex}"
+          ${target.pointIndex == null ? '' : `data-point-index="${target.pointIndex}"`}
+          aria-label="${escapeHtml(target.label)} 색상"
+        >
+        <span class="g2-color-chip" style="background:${target.color}"></span>
+        <span class="g2-color-label">${escapeHtml(target.label)}</span>
+        <code>${target.color.toUpperCase()}</code>
+      </label>
+    `).join('');
+  }
+
+  function colorTargets(plot) {
+    const palette = PALETTES[plot._g2PaletteName || '색각 안전'] || PALETTES['색각 안전'];
+    const traces = Array.from(plot.data || []);
+    if (!traces.length) return [];
+    if (traces.length === 1 && ['heatmap', 'contour', 'choropleth'].includes(traces[0].type)) return [];
+
+    if (traces.length === 1) {
+      const trace = traces[0];
+      const labels = pointLabels(trace);
+      const supportsPointColors = ['pie', 'treemap', 'sunburst', 'bar'].includes(trace.type) && labels.length > 1 && labels.length <= 16;
+      if (supportsPointColors) {
+        return labels.map((label, pointIndex) => ({
+          kind: 'point',
+          traceIndex: 0,
+          pointIndex,
+          label,
+          color: plot._g2PointColors?.[0]?.[pointIndex] || currentPointColor(trace, pointIndex, palette[pointIndex % palette.length]),
+        }));
+      }
+    }
+
+    return traces
+      .map((trace, traceIndex) => ({
+        kind: 'trace',
+        traceIndex,
+        pointIndex: null,
+        label: trace.name || `Series ${traceIndex + 1}`,
+        color: plot._g2TraceColors?.[traceIndex] || currentTraceColor(trace, palette[traceIndex % palette.length]),
+      }))
+      .filter((target) => target.color);
+  }
+
+  function pointLabels(trace) {
+    const labels = Array.isArray(trace.labels) ? trace.labels
+      : Array.isArray(trace.x) ? trace.x
+      : Array.isArray(trace.y) ? trace.y
+      : [];
+    return labels.map((value, index) => String(value ?? `Item ${index + 1}`));
+  }
+
+  function currentTraceColor(trace, fallback) {
+    const candidates = [trace.line?.color, trace.marker?.color];
+    for (const value of candidates) {
+      if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) return value;
+    }
+    return fallback;
+  }
+
+  function currentPointColor(trace, pointIndex, fallback) {
+    const values = trace.marker?.colors || trace.marker?.color;
+    if (Array.isArray(values)) {
+      const value = values[pointIndex];
+      if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) return value;
+    }
+    return fallback;
+  }
 
   function spatialEditorHtml(plot, isSpatial, isAnalysis) {
     const science = window.G2ScienceSettings || {};
@@ -235,12 +337,46 @@
 
   function bindEditorEvents() {
     const panel = document.querySelector('#g2EditorPanel');
-    if (!panel) return;
+    const plot = state.selectedPlot;
+    if (!panel || !plot) return;
 
     panel.querySelector('#g2Apply')?.addEventListener('click', applyEditor);
     panel.querySelector('#g2Regenerate')?.addEventListener('click', () => document.querySelector('#generateBtn')?.click());
 
+    panel.querySelectorAll('.g2-palette-card').forEach((button) => {
+      button.addEventListener('click', () => {
+        const name = button.dataset.palette;
+        if (!PALETTES[name]) return;
+        plot._g2PaletteName = name;
+        plot._g2TraceColors = {};
+        plot._g2PointColors = {};
+        applyEditor();
+        renderEditor();
+      });
+    });
+
+    panel.querySelectorAll('.g2-color-input').forEach((input) => {
+      input.addEventListener('input', () => {
+        const traceIndex = Number(input.dataset.traceIndex);
+        const color = input.value.toUpperCase();
+        if (input.dataset.kind === 'point') {
+          const pointIndex = Number(input.dataset.pointIndex);
+          plot._g2PointColors = plot._g2PointColors || {};
+          plot._g2PointColors[traceIndex] = plot._g2PointColors[traceIndex] || {};
+          plot._g2PointColors[traceIndex][pointIndex] = color;
+        } else {
+          plot._g2TraceColors = plot._g2TraceColors || {};
+          plot._g2TraceColors[traceIndex] = color;
+        }
+        input.closest('.g2-color-target')?.querySelector('.g2-color-chip')?.style.setProperty('background', color);
+        const code = input.closest('.g2-color-target')?.querySelector('code');
+        if (code) code.textContent = color;
+        applyEditor();
+      });
+    });
+
     panel.querySelectorAll('input,select,textarea').forEach((control) => {
+      if (control.classList.contains('g2-color-input')) return;
       const eventName = control.tagName === 'TEXTAREA' ? 'change' : 'input';
       control.addEventListener(eventName, () => {
         if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2RegionCount')) {
@@ -284,24 +420,33 @@
 
     try { Plotly.relayout(plot, layoutUpdate); } catch (_) {}
 
-    const palette = PALETTES[panel.querySelector('#g2Palette')?.value] || PALETTES['논문 기본'];
+    const paletteName = plot._g2PaletteName || '색각 안전';
+    const palette = PALETTES[paletteName] || PALETTES['색각 안전'];
     const lineWidth = finite(panel.querySelector('#g2LineWidth')?.value, 2.25);
     const markerSize = finite(panel.querySelector('#g2MarkerSize')?.value, 9);
 
     plot.data.forEach((trace, index) => {
-      const color = palette[index % palette.length];
+      const baseColor = palette[index % palette.length];
+      const color = plot._g2TraceColors?.[index] || baseColor;
+      const pointOverrides = plot._g2PointColors?.[index] || {};
       const update = {};
       if (trace.type === 'bar' || trace.type === 'waterfall') {
-        update['marker.color'] = color;
+        const count = Math.max(trace.x?.length || 0, trace.y?.length || 0);
+        const hasPointOverrides = Object.keys(pointOverrides).length > 0;
+        update['marker.color'] = hasPointOverrides
+          ? Array.from({ length: count }, (_, i) => pointOverrides[i] || palette[i % palette.length])
+          : color;
         update['marker.line.color'] = '#FFFFFF';
         update['marker.line.width'] = 0.8;
         update.textposition = showLabels ? (trace.orientation === 'h' ? 'outside' : 'auto') : 'none';
       } else if (trace.type === 'pie' || trace.type === 'treemap' || trace.type === 'sunburst') {
         const length = trace.values?.length || trace.labels?.length || palette.length;
-        update['marker.colors'] = [Array.from({ length }, (_, i) => palette[i % palette.length])];
+        update['marker.colors'] = [Array.from({ length }, (_, i) => pointOverrides[i] || palette[i % palette.length])];
         if (trace.type === 'pie') update.textinfo = showLabels ? 'label+percent' : 'none';
-      } else if (trace.type === 'heatmap' || trace.type === 'contour') {
-        update.colorscale = [[0, '#F8FAFC'], [0.25, palette[0]], [0.55, palette[Math.min(2, palette.length - 1)]], [1, palette[Math.min(4, palette.length - 1)]]];
+      } else if (trace.type === 'heatmap' || trace.type === 'contour' || trace.type === 'choropleth') {
+        update.colorscale = paletteScale(palette);
+      } else if (trace.type === 'indicator') {
+        update['number.font.color'] = color;
       } else {
         if (trace.line) {
           update['line.color'] = color;
@@ -316,7 +461,7 @@
             update['marker.showscale'] = trace.marker.showscale !== false;
           } else {
             update['marker.color'] = Array.isArray(trace.marker.color)
-              ? trace.marker.color.map((_, i) => palette[i % palette.length])
+              ? trace.marker.color.map((_, i) => pointOverrides[i] || palette[i % palette.length])
               : color;
           }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;

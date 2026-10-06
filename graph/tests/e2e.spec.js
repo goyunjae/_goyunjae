@@ -42,3 +42,44 @@ test('all graph groups render in the real browser', async ({ page }) => {
   }
   expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
 });
+
+
+test('publication palette presets and manual colors work in the real browser', async ({ page }) => {
+  test.setTimeout(60000);
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
+
+  await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
+
+  await page.selectOption('#chartGroup', 'BAR');
+  await page.click('#generateBtn');
+  await page.waitForSelector('.chart-card.is-selected .plot');
+
+  const paletteCount = await page.locator('.g2-palette-card').count();
+  expect(paletteCount).toBeGreaterThanOrEqual(10);
+
+  await page.locator('.g2-palette-card[data-palette="단색 · Navy"]').click();
+  await page.waitForTimeout(250);
+
+  const navyColors = await page.locator('.chart-card.is-selected .plot').evaluate((plot) =>
+    plot.data.map((trace) => trace.marker?.color).filter(Boolean)
+  );
+  expect(navyColors.length).toBeGreaterThan(1);
+  navyColors.forEach((color) => expect(String(color).toUpperCase()).toBe('#1F3A5F'));
+
+  const firstColor = page.locator('.g2-color-input').first();
+  await expect(firstColor).toBeAttached();
+  await firstColor.evaluate((input) => {
+    input.value = '#A61B1B';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(250);
+
+  const firstTraceColor = await page.locator('.chart-card.is-selected .plot').evaluate((plot) =>
+    plot.data[0].marker?.color || plot.data[0].line?.color || null
+  );
+  expect(String(firstTraceColor).toUpperCase()).toBe('#A61B1B');
+
+  expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
+});
