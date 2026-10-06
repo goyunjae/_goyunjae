@@ -227,33 +227,76 @@
   function resolveStationsStrict(data) {
     const settings = window.G2ScienceSettings || {};
     const custom = parseStationText(settings.stationText || '');
-    const totals = labelTotals(data);
+
+    // GEO input may be organized either by columns (labels) or by rows (series).
+    // Select the dimension whose names match the supplied coordinates best.
+    const labelNames = Array.from(data.labels || []);
+    const seriesNames = Array.from(data.series || []);
+    const dimensions = [
+      { mode: 'labels', names: labelNames, values: labelTotals(data) },
+      { mode: 'series', names: seriesNames, values: seriesTotals(data) },
+    ];
+    const selected = chooseGeoDimension(dimensions, custom);
+
     const stations = [];
     const missing = [];
-
-    (data.labels || []).forEach((label, index) => {
-      const key = normalize(label);
+    selected.names.forEach((name, index) => {
+      const key = normalize(name);
       const customCoord = custom.get(key);
       const fallback = DEFAULT_COORDS.get(key);
       const coord = customCoord || (fallback ? { lat: fallback[0], lon: fallback[1] } : null);
-      if (!coord) {
-        missing.push(String(label));
+
+      if (!coord || !isValidLatLon(coord.lat, coord.lon)) {
+        missing.push(String(name));
         return;
       }
-      if (!isValidLatLon(coord.lat, coord.lon)) {
-        missing.push(String(label));
-        return;
-      }
+
       stations.push({
-        name: String(label),
+        name: String(name),
         lat: Number(coord.lat),
         lon: Number(coord.lon),
-        value: Number(totals[index]) || 0,
+        value: Number(selected.values[index]) || 0,
         sourceIndex: index,
+        sourceDimension: selected.mode,
       });
     });
 
-    return { stations, missing };
+    return {
+      stations,
+      missing,
+      dimension: selected.mode,
+      matchedCoordinates: selected.matchCount,
+    };
+  }
+
+  function chooseGeoDimension(dimensions, custom) {
+    const scored = dimensions.map((dimension) => {
+      let customMatches = 0;
+      let defaultMatches = 0;
+      dimension.names.forEach((name) => {
+        const key = normalize(name);
+        if (custom.has(key)) customMatches += 1;
+        else if (DEFAULT_COORDS.has(key)) defaultMatches += 1;
+      });
+      return {
+        ...dimension,
+        customMatches,
+        defaultMatches,
+        matchCount: customMatches + defaultMatches,
+      };
+    });
+
+    scored.sort((a, b) => {
+      // User-entered coordinates are the strongest signal.
+      if (b.customMatches !== a.customMatches) return b.customMatches - a.customMatches;
+      if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+      // Keep the historical labels behavior only when scores are tied.
+      if (a.mode === 'labels' && b.mode !== 'labels') return -1;
+      if (b.mode === 'labels' && a.mode !== 'labels') return 1;
+      return 0;
+    });
+
+    return scored[0] || { mode: 'labels', names: [], values: [], matchCount: 0 };
   }
 
   function parseStationText(text) {
@@ -659,6 +702,12 @@
   function labelTotals(data) {
     return (data.labels || []).map((_, i) =>
       (data.values || []).reduce((sum, row) => sum + (Number(row[i]) || 0), 0)
+    );
+  }
+
+  function seriesTotals(data) {
+    return (data.series || []).map((_, i) =>
+      (data.values?.[i] || []).reduce((sum, value) => sum + (Number(value) || 0), 0)
     );
   }
 
