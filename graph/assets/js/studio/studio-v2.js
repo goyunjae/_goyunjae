@@ -192,12 +192,12 @@
     if (badge) badge.textContent = cardTitle;
     const layout = plot._fullLayout || plot.layout || {};
     const title = stripHtml(layout.title?.text || '');
-    const isGeo = plot.data.some((trace) => ['scattergeo', 'choropleth'].includes(trace.type));
+    const isGeo = plot.data.some((trace) => ['scattergeo', 'choropleth', 'scattermap', 'choroplethmap', 'densitymap'].includes(trace.type));
     const isContour = plot.data.some((trace) => trace.type === 'contour');
     const isSpatialCard = /^GEO\b/i.test(cardTitle) || isGeo || isContour;
     const isAnalysisCard = /^ANALYSIS\b/i.test(cardTitle);
     const isLine = plot.data.some((trace) => trace.type === 'scatter' && String(trace.mode || '').includes('lines'));
-    const hasMarkers = plot.data.some((trace) => String(trace.mode || '').includes('markers') || trace.type === 'scattergeo');
+    const hasMarkers = plot.data.some((trace) => String(trace.mode || '').includes('markers') || ['scattergeo','scattermap'].includes(trace.type));
 
     const layoutBody = `
       ${field('Title', `<input id="g2Title" type="text" value="${escapeHtml(title)}">`)}
@@ -536,7 +536,7 @@
   function supportsPointEditing(trace) {
     if (!trace) return false;
     if (['bar', 'waterfall', 'funnel', 'pie', 'treemap', 'sunburst'].includes(trace.type)) return true;
-    if (['scatter', 'scattergeo', 'scatterpolar'].includes(trace.type)) {
+    if (['scatter', 'scattergeo', 'scattermap', 'scatterpolar'].includes(trace.type)) {
       const mode = String(trace.mode || '');
       if (!mode.includes('markers')) return false;
       const colors = trace.marker?.color;
@@ -671,8 +671,26 @@
     const contourSmoothing = Number(science.contourSmoothing ?? 1);
     const regionCount = Number(science.regionCount || 3);
     const ellipseScale = Number(science.pcaEllipseScale || 2.2);
+    const mapStyle = science.mapStyle || 'carto-voyager';
+    const mapZoom = science.mapZoom == null ? '' : science.mapZoom;
+    const mapBearing = Number(science.mapBearing || 0);
+    const mapPitch = Number(science.mapPitch || 0);
 
     const spatialFields = isSpatial ? `
+      <div class="g2-editor-grid two">
+        ${field('Base map', `<select id="g2MapStyle">
+          <option value="carto-voyager" ${mapStyle === 'carto-voyager' ? 'selected' : ''}>Detailed · Voyager</option>
+          <option value="open-street-map" ${mapStyle === 'open-street-map' ? 'selected' : ''}>OpenStreetMap</option>
+          <option value="carto-positron" ${mapStyle === 'carto-positron' ? 'selected' : ''}>Publication · Positron</option>
+          <option value="outdoors" ${mapStyle === 'outdoors' ? 'selected' : ''}>Terrain · Outdoors</option>
+          <option value="satellite-streets" ${mapStyle === 'satellite-streets' ? 'selected' : ''}>Satellite + Streets</option>
+        </select>`)}
+        ${field('Map zoom', `<input id="g2MapZoom" type="number" min="0" max="20" step="0.25" placeholder="Auto" value="${escapeHtml(mapZoom)}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('Bearing', `<input id="g2MapBearing" type="number" min="-180" max="180" step="5" value="${mapBearing}">`)}
+        ${field('Pitch', `<input id="g2MapPitch" type="number" min="0" max="60" step="5" value="${mapPitch}">`)}
+      </div>
       ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="서울,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
       <div class="g2-editor-grid two">
         ${field('Distance rings (km)', `<input id="g2Rings" type="text" value="${escapeHtml(rings)}">`)}
@@ -820,7 +838,7 @@
       if (control.id === 'g2SelectedObjectColor') return;
       const eventName = control.tagName === 'TEXTAREA' ? 'change' : 'input';
       control.addEventListener(eventName, () => {
-        if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2ContourMin,#g2ContourMax,#g2ContourPower,#g2ContourResolution,#g2ContourPadding,#g2ContourLineColor,#g2ContourLineWidth,#g2ContourSmoothing,#g2RegionCount,#g2PcaEllipseScale')) {
+        if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2ContourMin,#g2ContourMax,#g2ContourPower,#g2ContourResolution,#g2ContourPadding,#g2ContourLineColor,#g2ContourLineWidth,#g2ContourSmoothing,#g2MapStyle,#g2MapZoom,#g2MapBearing,#g2MapPitch,#g2RegionCount,#g2PcaEllipseScale')) {
           writeScienceSettings();
           return;
         }
@@ -925,6 +943,13 @@
         update.colorscale = paletteScale(palette);
       } else if (trace.type === 'indicator') {
         update['number.font.color'] = color;
+      } else if (trace.type === 'scattermap' && /등고선/.test(String(trace.name || ''))) {
+        const science = window.G2ScienceSettings || {};
+        const contourColor = /^#[0-9a-f]{6}$/i.test(String(science.contourLineColor || ''))
+          ? science.contourLineColor
+          : color;
+        update['line.color'] = contourColor;
+        update['line.width'] = finite(science.contourLineWidth, trace.line?.width || 1.35);
       } else {
         if (trace.line) {
           update['line.color'] = color;
@@ -948,8 +973,10 @@
               : color;
           }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;
-          update['marker.line.color'] = '#FFFFFF';
-          update['marker.line.width'] = 0.9;
+          if (trace.type !== 'scattermap') {
+            update['marker.line.color'] = '#FFFFFF';
+            update['marker.line.width'] = 0.9;
+          }
         }
         if (trace.text !== undefined) {
           update.textposition = showLabels ? (trace.textposition || 'top center') : 'none';
@@ -1003,19 +1030,30 @@
     const regionCount = Number(panel.querySelector('#g2RegionCount')?.value);
     if (Number.isFinite(regionCount)) settings.regionCount = Math.min(6, Math.max(2, Math.round(regionCount)));
 
+    const mapStyle = panel.querySelector('#g2MapStyle')?.value;
+    if (typeof mapStyle === 'string' && mapStyle) settings.mapStyle = mapStyle;
+
+    settings.mapZoom = nullableInputNumber(panel.querySelector('#g2MapZoom'));
+
+    const mapBearing = Number(panel.querySelector('#g2MapBearing')?.value);
+    if (Number.isFinite(mapBearing)) settings.mapBearing = Math.min(180, Math.max(-180, mapBearing));
+
+    const mapPitch = Number(panel.querySelector('#g2MapPitch')?.value);
+    if (Number.isFinite(mapPitch)) settings.mapPitch = Math.min(60, Math.max(0, mapPitch));
+
     const ellipseScale = Number(panel.querySelector('#g2PcaEllipseScale')?.value);
     if (Number.isFinite(ellipseScale)) settings.pcaEllipseScale = Math.min(5, Math.max(0.5, ellipseScale));
   }
 
   function stationsFromPlot(plot) {
-    const trace = plot.data?.find((item) => item.type === 'scattergeo' && Array.isArray(item.lat) && Array.isArray(item.lon));
+    const trace = plot.data?.find((item) => ['scattergeo','scattermap'].includes(item.type) && Array.isArray(item.lat) && Array.isArray(item.lon));
     if (!trace) return window.G2ScienceSettings?.stationText || '';
     const names = Array.from(trace.text || []).map((value, i) => stripHtml(String(value || `Point ${i + 1}`)).split('\n')[0]);
     return trace.lat.map((lat, i) => `${names[i] || `Point ${i + 1}`},${Number(lat).toFixed(6)},${Number(trace.lon?.[i]).toFixed(6)}`).join('\n');
   }
 
   function detectType(plot) {
-    if (plot.data.some((t) => ['scattergeo', 'choropleth'].includes(t.type))) return 'Map';
+    if (plot.data.some((t) => ['scattergeo', 'choropleth', 'scattermap', 'choroplethmap', 'densitymap'].includes(t.type))) return 'Map';
     if (plot.data.some((t) => t.type === 'contour')) return 'Contour';
     if (plot.data.some((t) => t.type === 'heatmap')) return 'Heatmap';
     if (plot.data.some((t) => t.type === 'pie')) return 'Pie';

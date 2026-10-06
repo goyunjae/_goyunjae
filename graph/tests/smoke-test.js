@@ -70,6 +70,7 @@ const chartScriptOrder = [
   "assets/js/charts/chart-type-polish.js",
   "assets/js/charts/premium-polish.js",
   "assets/js/charts/science-charts.js",
+  "assets/js/charts/precision-map.js",
 ];
 
 const appCode = fs.readFileSync(path.join(root, chartScriptOrder[0]), "utf8");
@@ -88,6 +89,18 @@ const groups = new Set(specs.map((spec) => spec.group));
 assert(specs.length >= 35, `Unexpectedly low chart count: ${specs.length}`);
 assert(groups.has("GEO"), "GEO chart group is missing.");
 assert(groups.has("ANALYSIS"), "ANALYSIS chart group is missing.");
+assert(windowMock.G2PrecisionMap && typeof windowMock.G2PrecisionMap.haversineKm === "function", "Precision Map API missing.");
+if (windowMock.G2PrecisionMap) {
+  const seoulBusan = windowMock.G2PrecisionMap.haversineKm(37.5665, 126.9780, 35.1796, 129.0756);
+  assert(seoulBusan > 300 && seoulBusan < 350, `Unexpected Seoul-Busan geodesic distance: ${seoulBusan}`);
+
+  const strict = windowMock.G2PrecisionMap.resolveStationsStrict({
+    labels: ["서울", "UNKNOWN_PLACE"],
+    values: [[10, 20]],
+  });
+  assert(strict.stations.length === 1, "Strict GEO resolver should keep only known coordinates.");
+  assert(strict.missing.length === 1 && strict.missing[0] === "UNKNOWN_PLACE", "Strict GEO resolver should report missing coordinates.");
+}
 
 const cases = [
   {

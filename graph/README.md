@@ -134,3 +134,28 @@ Interval이 작을수록 등고선 간격이 촘촘해집니다. IDW power를 �
 ## PCA 그룹 표시
 
 PCA score plot은 k-means로 그룹을 자동 구분한 뒤 각 그룹을 공분산 기반 파스텔 타원으로 감싸 표시합니다. 그룹 수와 타원 크기(σ)를 Figure editor에서 조절할 수 있습니다.
+
+## Precision GEO (MapLibre)
+
+GEO 차트는 기존 `scattergeo` 외곽선 지도를 사용하지 않고 Plotly의 **MapLibre 기반 `scattermap` 타일 지도**를 사용합니다.
+
+- 상세 도로/도시/해안선을 표시하는 실제 타일 지도
+- 기본 지도: Carto Voyager
+- OpenStreetMap / Carto Positron / Outdoors / Satellite + Streets 선택 가능
+- 위·경도 6자리 표시
+- 좌표를 찾지 못한 항목은 임의 위치에 배치하지 않고 `좌표 없음`으로 표시
+- 거리 계산은 Haversine 공식을 사용해 지구 곡률을 반영
+- 거리 링은 지표면 대권거리 기반 geodesic circle
+- IDW 값 보간은 Haversine 거리 가중치 사용
+- 값/거리 등고선을 위·경도 좌표로 변환해 타일 지도 위에 직접 중첩
+- 최근접 영역은 지역 평면 투영에서 Voronoi cell을 계산한 후 위·경도로 역변환
+
+Figure editor의 **GEO · Contour**에서 Base map, Map zoom, Bearing, Pitch를 조절할 수 있습니다.
+
+정확한 분석이 필요하면 `Station coordinates`에 각 관측점의 실제 위도·경도를 직접 입력하는 것을 권장합니다.
+
+```text
+관측점A,35.846215,127.129624
+관측점B,35.862504,127.097184
+관측점C,35.810224,127.158329
+```
