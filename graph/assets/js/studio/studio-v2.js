@@ -258,6 +258,7 @@
     const palette = PALETTES[plot._g2PaletteName || '색각 안전'] || PALETTES['색각 안전'];
     const traces = Array.from(plot.data || []);
     if (!traces.length) return [];
+    if (traces.length === 1 && ['heatmap', 'contour', 'choropleth'].includes(traces[0].type)) return [];
 
     if (traces.length === 1) {
       const trace = traces[0];
@@ -442,8 +443,10 @@
         const length = trace.values?.length || trace.labels?.length || palette.length;
         update['marker.colors'] = [Array.from({ length }, (_, i) => pointOverrides[i] || palette[i % palette.length])];
         if (trace.type === 'pie') update.textinfo = showLabels ? 'label+percent' : 'none';
-      } else if (trace.type === 'heatmap' || trace.type === 'contour') {
-        update.colorscale = [[0, '#F8FAFC'], [0.25, palette[0]], [0.55, palette[Math.min(2, palette.length - 1)]], [1, palette[Math.min(4, palette.length - 1)]]];
+      } else if (trace.type === 'heatmap' || trace.type === 'contour' || trace.type === 'choropleth') {
+        update.colorscale = paletteScale(palette);
+      } else if (trace.type === 'indicator') {
+        update['number.font.color'] = color;
       } else {
         if (trace.line) {
           update['line.color'] = color;
