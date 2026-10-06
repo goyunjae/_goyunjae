@@ -973,8 +973,10 @@
               : color;
           }
           update['marker.size'] = Array.isArray(trace.marker.size) ? trace.marker.size : markerSize;
-          update['marker.line.color'] = '#FFFFFF';
-          update['marker.line.width'] = 0.9;
+          if (trace.type !== 'scattermap') {
+            update['marker.line.color'] = '#FFFFFF';
+            update['marker.line.width'] = 0.9;
+          }
         }
         if (trace.text !== undefined) {
           update.textposition = showLabels ? (trace.textposition || 'top center') : 'none';
