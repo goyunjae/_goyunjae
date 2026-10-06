@@ -79,7 +79,7 @@
         marker: {
           size: values.map((v) => 10 + 26 * Math.sqrt(Math.max(v, 0) / maxValue)),
           color: values,
-          colorscale: [[0, '#DCEAF7'], [0.45, '#56B4E9'], [1, '#005B96']],
+          colorscale: [[0, '#EEF6FB'], [0.45, '#B9D8EA'], [1, '#82B5D2']],
           showscale: true,
           colorbar: { title: { text: '값' }, thickness: 12, len: 0.65 },
           opacity: 0.88,
@@ -221,7 +221,7 @@
           autocontour: false,
           contours: { start: step, end: contourEnd, size: step, coloring: 'lines', showlabels: true, labelfont: { size: 10, color: '#334155' } },
           line: { width: 1.4, smoothing: 0.7 },
-          colorscale: [[0, '#DCEAF7'], [0.5, '#4C78A8'], [1, '#7A3E9D']],
+          colorscale: [[0, '#EDF4F8'], [0.5, '#B7D4E5'], [1, '#C7B7DE']],
           showscale: false,
           hovertemplate: '최근접 거리 %{z:.1f} km<extra></extra>',
         },
@@ -379,14 +379,14 @@
     result.featureNames.forEach((name, i) => {
       const x = result.loadings[i][0] * scale;
       const y = result.loadings[i][1] * scale;
-      shapes.push({ type: 'line', x0: 0, y0: 0, x1: x, y1: y, line: { color: '#D55E00', width: 1.5 } });
-      annotations.push({ x, y, text: name, showarrow: true, ax: -x * 7, ay: y * 7, arrowcolor: '#D55E00', arrowwidth: 1, font: { size: 10, color: '#9A3412' } });
+      shapes.push({ type: 'line', x0: 0, y0: 0, x1: x, y1: y, line: { color: '#D99AA8', width: 1.5 } });
+      annotations.push({ x, y, text: name, showarrow: true, ax: -x * 7, ay: y * 7, arrowcolor: '#D99AA8', arrowwidth: 1, font: { size: 10, color: '#9E6672' } });
     });
     return {
       traces: [{
         type: 'scatter', mode: 'markers+text', x: result.scores.map((p) => p[0]), y: result.scores.map((p) => p[1]),
         text: result.names, textposition: 'top center',
-        marker: { size: 10, color: '#0072B2', line: { color: '#fff', width: 1.2 } },
+        marker: { size: 10, color: '#9EC5E6', line: { color: '#5E7E9E', width: 1.1 } },
         hovertemplate: '<b>%{text}</b><br>PC1 %{x:.3f}<br>PC2 %{y:.3f}<extra></extra>', name: '관측치'
       }],
       layout: {
@@ -404,7 +404,7 @@
     return {
       traces: [{
         type: 'heatmap', x: features, y: features, z: corr, zmin: -1, zmax: 1, zmid: 0,
-        colorscale: [[0, '#2166AC'], [0.5, '#F7F7F7'], [1, '#B2182B']],
+        colorscale: [[0, '#A8CBE2'], [0.5, '#FFFDFC'], [1, '#E6A8B2']],
         text: corr.map((row) => row.map((v) => v.toFixed(2))), texttemplate: '%{text}', textfont: { size: 10 },
         colorbar: { title: { text: 'r' }, thickness: 12 }, hovertemplate: '%{y} × %{x}<br>r = %{z:.3f}<extra></extra>'
       }],
