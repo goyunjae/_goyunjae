@@ -1,0 +1,37 @@
+name: Graph browser E2E
+
+on:
+  pull_request:
+    paths:
+      - "graph/**"
+      - ".github/workflows/graph-browser-e2e.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "graph/**"
+      - ".github/workflows/graph-browser-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+      - name: Start static server
+        run: |
+          python3 -m http.server 8000 --directory . > /tmp/g2-http.log 2>&1 &
+          echo $! > /tmp/g2-http.pid
+      - name: Run browser E2E
+        run: npx playwright test graph/tests/e2e.spec.js --browser=chromium --workers=1 --reporter=line
