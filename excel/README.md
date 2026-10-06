@@ -2,6 +2,10 @@
 
 기존 Python GUI 프로그램의 변환 규칙을 브라우저에서 실행하도록 옮긴 프로젝트입니다.
 
+## 접속 주소
+
+https://goyunjae.github.io/_goyunjae/excel/
+
 ## 사용 방법
 
 1. 웹 페이지에서 `.xls` 또는 `.xlsx` 파일을 선택합니다.
