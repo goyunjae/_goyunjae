@@ -668,6 +668,7 @@
     const showLabels = panel.querySelector('#g2Labels')?.checked !== false;
     const grid = panel.querySelector('#g2Grid')?.value || 'light';
     const gridColor = grid === 'none' ? 'rgba(0,0,0,0)' : grid === 'strong' ? '#CBD5E1' : '#E8EDF3';
+    writeScienceSettings();
 
     const layoutUpdate = {
       'title.text': title,
@@ -708,6 +709,14 @@
         const length = trace.values?.length || trace.labels?.length || palette.length;
         update['marker.colors'] = [Array.from({ length }, (_, i) => pointOverrides[i] || palette[i % palette.length])];
         if (trace.type === 'pie') update.textinfo = showLabels ? 'label+percent' : 'none';
+      } else if (trace.type === 'contour' && trace.name === 'IDW contour') {
+        const science = window.G2ScienceSettings || {};
+        const contourColor = /^#[0-9a-f]{6}$/i.test(String(science.contourLineColor || ''))
+          ? science.contourLineColor
+          : '#E89A8A';
+        update.colorscale = [[0, contourColor], [1, contourColor]];
+        update['line.width'] = finite(science.contourLineWidth, 1.35);
+        update['line.smoothing'] = finite(science.contourSmoothing, 1);
       } else if (trace.type === 'heatmap' || trace.type === 'contour' || trace.type === 'choropleth') {
         update.colorscale = paletteScale(palette);
       } else if (trace.type === 'indicator') {
@@ -745,7 +754,6 @@
       try { Plotly.restyle(plot, update, [index]); } catch (_) {}
     });
 
-    writeScienceSettings();
     setTimeout(() => { try { Plotly.Plots.resize(plot); } catch (_) {} }, 30);
   }
 
