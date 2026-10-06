@@ -167,12 +167,9 @@
       next.marker = { ...(next.marker || {}), color: colorList(values, index), line: { color: "#ffffff", width: 1 } };
     }
     if (next.type === "scatter") {
-      const values = numericTraceValues(next);
-      if (next.mode && !String(next.mode).includes("text") && Array.isArray(values)) next.mode = `${next.mode}+text`;
-      if (!next.text && Array.isArray(values)) next.text = values.map(format);
-      next.textposition = next.textposition || "top center";
-      next.line = { ...(next.line || {}), color: palette[index % palette.length], width: 2.6 };
-      next.marker = { ...(next.marker || {}), color: palette[index % palette.length], line: { color: "#ffffff", width: 1 } };
+      next.line = { ...(next.line || {}), color: palette[index % palette.length], width: 2.2 };
+      next.marker = { ...(next.marker || {}), color: palette[index % palette.length], size: next.marker?.size || 8, line: { color: "#ffffff", width: 0.9 } };
+      // Keep labels only when the chart builder intentionally supplied them.
     }
     if (next.type === "pie") {
       next.textinfo = "label+value+percent";
