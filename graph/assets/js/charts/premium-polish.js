@@ -2,7 +2,7 @@
   if (typeof window.chartSpecs !== "function") return;
 
   const previous = window.chartSpecs;
-  const palette = ["#2F95B8", "#45B8AC", "#B8E6A3", "#2D64A8", "#F2B75E", "#E56F76", "#8E7AD8", "#7FC8A9"];
+  const palette = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E", "#BE123C", "#475569"];
   const groupLabels = {
     BAR: "비교",
     LINE: "추이",
@@ -151,7 +151,7 @@
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         colorway: palette,
-        font: { family: "Malgun Gothic, Apple SD Gothic Neo, Noto Sans KR, Arial", color: "#20323A" },
+        font: { family: "Arial, Noto Sans KR, Malgun Gothic, Apple SD Gothic Neo, sans-serif", color: "#1F2937", size: 12 },
         hoverlabel: { bgcolor: "#20323A", bordercolor: "#20323A", font: { color: "#ffffff" } },
         margin: { l: 62, r: 40, t: 68, b: 88, ...(layout.margin || {}) },
       },
