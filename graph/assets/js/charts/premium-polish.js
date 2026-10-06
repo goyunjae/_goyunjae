@@ -40,11 +40,9 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
-    injectPremiumStyle();
-    installQuickPresets();
+    // Chart registry only. UI/editor behavior is owned by Studio v2 to avoid
+    // duplicate observers, invalid preset state and panel lag.
     polishStaticText();
-    observeCharts();
-    setTimeout(renameGroups, 30);
   });
 
   function spec(group, label, build) {
