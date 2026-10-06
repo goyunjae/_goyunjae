@@ -86,3 +86,18 @@ Figure editor에서 논문 피규어용 색상 프리셋을 색상칩으로 선�
 - 단색 Black / Navy / Blue / Red / Green
 
 프리셋 적용 후 **Individual colors**에서 범례 또는 항목별 색상칩을 눌러 개별 색을 직접 변경할 수 있습니다. 파이/트리맵/단일 막대처럼 한 trace 안에 여러 항목이 있는 그래프는 항목별 색상 편집을 제공합니다. 히트맵·등고선처럼 연속형 색상 스케일을 사용하는 그래프는 팔레트 세트가 전체 색상 스케일에 적용됩니다.
+
+
+## Object Manager
+
+Grapher의 Object Manager / Property Manager 흐름을 참고해 그래프 내부 개체를 직접 선택하고 색상을 편집할 수 있습니다.
+
+- 시리즈/레이어를 선택하면 해당 선·마커·채움 기본색을 변경합니다.
+- Bar / Waterfall / Funnel은 막대·단계별 색상을 개별 변경할 수 있습니다.
+- Scatter / Bubble / Geo marker는 점별 색상을 개별 변경할 수 있습니다.
+- Pie / Treemap / Sunburst는 조각·영역별 색상을 개별 변경할 수 있습니다.
+- 그래프의 막대/점/조각을 직접 클릭하면 해당 개체가 Objects 목록에서 자동 선택됩니다.
+- Objects 목록에서 개체를 선택한 뒤 Color를 눌러 색상을 직접 지정할 수도 있습니다.
+- Reset을 누르면 해당 개체의 수동 색상만 해제하고 현재 팔레트 색으로 돌아갑니다.
+
+Heatmap, Contour, Choropleth처럼 연속형 스케일을 사용하는 레이어는 개별 셀 대신 Publication palette로 전체 색상 스케일을 관리합니다.
