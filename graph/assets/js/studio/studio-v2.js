@@ -1,31 +1,38 @@
 (function () {
   'use strict';
 
-  const VERSION = '20261006.3';
+  const VERSION = '20261006.4';
   const state = {
     selectedCard: null,
     selectedPlot: null,
     selectedObject: null,
     view: 'preview',
     editorTimer: null,
+    sectionOpen: {
+      layout: true,
+      palette: true,
+      objects: true,
+      marks: false,
+      science: true,
+    },
   };
 
   const PALETTES = {
-    '색각 안전': ['#0072B2', '#E69F00', '#009E73', '#D55E00', '#CC79A7', '#56B4E9', '#F0E442', '#000000'],
-    '논문 기본': ['#3B5BA7', '#D65F5F', '#3A923A', '#8C6BB1', '#E3A018', '#4C9FBE', '#8C564B', '#6B7280'],
-    'Muted': ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#B279A2', '#FF9DA6', '#9D755D'],
-    'High contrast': ['#1F77B4', '#D62728', '#2CA02C', '#9467BD', '#FF7F0E', '#17BECF', '#8C564B', '#111111'],
-    'Viridis': ['#440154', '#414487', '#2A788E', '#22A884', '#7AD151', '#FDE725'],
-    'Gray scale': ['#111111', '#333333', '#555555', '#777777', '#999999', '#BBBBBB', '#DDDDDD'],
-    'Blue scale': ['#0B1F33', '#123A5A', '#1E5A85', '#3478A9', '#5B96C3', '#8BB5D4', '#BDD3E6'],
-    'Red scale': ['#3B0A0A', '#6D1616', '#982626', '#B83A3A', '#D65A5A', '#E78A8A', '#F3BABA'],
-    'Green scale': ['#0B2E20', '#155239', '#1F7552', '#32966C', '#58B488', '#8DCEAD', '#C2E5D2'],
-    'Purple scale': ['#21103A', '#3C1D62', '#5A2A86', '#7840A6', '#9666BD', '#B792D1', '#D8C4E5'],
-    '단색 · Black': Array(12).fill('#222222'),
-    '단색 · Navy': Array(12).fill('#1F3A5F'),
-    '단색 · Blue': Array(12).fill('#2563EB'),
-    '단색 · Red': Array(12).fill('#B42318'),
-    '단색 · Green': Array(12).fill('#18794E'),
+    'Pastel · Paper': ['#9EC5E6', '#F2B8B5', '#B7D7B0', '#C9B7DD', '#F4D49A', '#A8D8D8', '#E6B8C8', '#B8C6D9'],
+    'Pastel · Cool': ['#A9C9E8', '#B7DDE2', '#B9D6C2', '#C8C0E6', '#D5C6E8', '#B7CADB', '#C6DEE8', '#BFD8D2'],
+    'Pastel · Warm': ['#F2B8B5', '#F5C9A9', '#F3D49D', '#E8B7C7', '#D8B8D8', '#EABFA8', '#F1C7C1', '#DEC0B3'],
+    'Pastel · Earth': ['#C7D3B4', '#D9C6A5', '#C8B7A6', '#B7C9C0', '#D5B8A8', '#C8C4A7', '#B9C6A8', '#D8C9B6'],
+    'Pastel · Colorblind': ['#A8CCE6', '#F2D18C', '#A9D6C2', '#E8B4A5', '#D7B9DD', '#B7DDEB', '#E8D9A4', '#C7C7C7'],
+    'Gray scale': ['#222222', '#444444', '#666666', '#888888', '#AAAAAA', '#CCCCCC', '#E5E5E5'],
+    'Blue scale': ['#7FAFD1', '#91BEDC', '#A6CAE4', '#BAD6EB', '#CDE2F1', '#E0EDF7'],
+    'Rose scale': ['#C98291', '#D79AAA', '#E2AFBA', '#EBC3CC', '#F2D6DC', '#F7E7EA'],
+    'Green scale': ['#86B89A', '#9BC6AC', '#ADD2BC', '#C0DDCC', '#D2E8DC', '#E5F2EC'],
+    'Purple scale': ['#A58CC5', '#B5A0D0', '#C5B4DA', '#D5C8E4', '#E3D9EC', '#F0EAF5'],
+    '단색 · Black': Array(12).fill('#2A2A2A'),
+    '단색 · Navy': Array(12).fill('#526B86'),
+    '단색 · Blue': Array(12).fill('#8FB8DE'),
+    '단색 · Rose': Array(12).fill('#D99AA8'),
+    '단색 · Green': Array(12).fill('#9DC8AD'),
   };
 
   window.addEventListener('DOMContentLoaded', init);
@@ -185,37 +192,47 @@
     const isLine = plot.data.some((trace) => trace.type === 'scatter' && String(trace.mode || '').includes('lines'));
     const hasMarkers = plot.data.some((trace) => String(trace.mode || '').includes('markers') || trace.type === 'scattergeo');
 
+    const layoutBody = `
+      ${field('Title', `<input id="g2Title" type="text" value="${escapeHtml(title)}">`)}
+      <div class="g2-editor-grid two">
+        ${field('Height', `<input id="g2Height" type="number" min="280" max="900" step="20" value="${Math.round(layout.height || plot.clientHeight || 420)}">`)}
+        ${field('Font size', `<input id="g2FontSize" type="number" min="8" max="24" step="1" value="${Number(layout.font?.size || 12)}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('Canvas', '<select id="g2Canvas"><option value="#FFFFFF">White</option><option value="#F8FAFC">Soft</option><option value="#111827">Ink</option></select>')}
+        ${field('Grid', '<select id="g2Grid"><option value="light">Light</option><option value="none">None</option><option value="strong">Strong</option></select>')}
+      </div>
+      <label class="g2-check"><input id="g2Legend" type="checkbox" ${layout.showlegend === false ? '' : 'checked'}> Show legend</label>
+      <label class="g2-check"><input id="g2Labels" type="checkbox" checked> Show labels</label>
+    `;
+
+    const paletteBody = `
+      <div class="g2-palette-block">
+        <div class="g2-subhead"><span>Pastel publication palette</span><small>색상 세트를 클릭하면 바로 적용됩니다.</small></div>
+        <div id="g2PaletteGrid" class="g2-palette-grid">${paletteButtons(plot)}</div>
+      </div>
+    `;
+
+    const objectsBody = `
+      <div class="g2-object-editor">
+        <div class="g2-subhead"><span>Object Manager</span><small>개체를 선택한 뒤 색상을 개별 수정합니다.</small></div>
+        <div id="g2ObjectManager" class="g2-object-manager">${objectManagerHtml(plot)}</div>
+        <div id="g2ObjectProperties" class="g2-object-properties">${selectedObjectPropertiesHtml(plot)}</div>
+      </div>
+    `;
+
+    const marksBody = `
+      <div class="g2-editor-grid two">
+        ${field('Line width', `<input id="g2LineWidth" type="range" min="0.5" max="6" step="0.25" value="2.25" ${isLine ? '' : 'disabled'}>`)}
+        ${field('Marker size', `<input id="g2MarkerSize" type="range" min="3" max="24" step="1" value="9" ${hasMarkers ? '' : 'disabled'}>`)}
+      </div>
+    `;
+
     body.innerHTML = `
-      <section class="g2-editor-section open">
-        <h3>Layout</h3>
-        ${field('Title', `<input id="g2Title" type="text" value="${escapeHtml(title)}">`)}
-        <div class="g2-editor-grid two">
-          ${field('Height', `<input id="g2Height" type="number" min="280" max="900" step="20" value="${Math.round(layout.height || plot.clientHeight || 420)}">`)}
-          ${field('Font size', `<input id="g2FontSize" type="number" min="8" max="24" step="1" value="${Number(layout.font?.size || 12)}">`)}
-        </div>
-        <div class="g2-editor-grid two">
-          ${field('Canvas', '<select id="g2Canvas"><option value="#FFFFFF">White</option><option value="#F8FAFC">Soft</option><option value="#111827">Ink</option></select>')}
-          ${field('Grid', '<select id="g2Grid"><option value="light">Light</option><option value="none">None</option><option value="strong">Strong</option></select>')}
-        </div>
-        <div class="g2-palette-block">
-          <div class="g2-subhead"><span>Publication palette</span><small>색상 세트를 클릭하면 바로 적용됩니다.</small></div>
-          <div id="g2PaletteGrid" class="g2-palette-grid">${paletteButtons(plot)}</div>
-        </div>
-        <div class="g2-object-editor">
-          <div class="g2-subhead"><span>Objects</span><small>Grapher처럼 개체를 선택한 뒤 속성을 수정합니다.</small></div>
-          <div id="g2ObjectManager" class="g2-object-manager">${objectManagerHtml(plot)}</div>
-          <div id="g2ObjectProperties" class="g2-object-properties">${selectedObjectPropertiesHtml(plot)}</div>
-        </div>
-        <label class="g2-check"><input id="g2Legend" type="checkbox" ${layout.showlegend === false ? '' : 'checked'}> Show legend</label>
-        <label class="g2-check"><input id="g2Labels" type="checkbox" checked> Show labels</label>
-      </section>
-      <section class="g2-editor-section">
-        <h3>Marks</h3>
-        <div class="g2-editor-grid two">
-          ${field('Line width', `<input id="g2LineWidth" type="range" min="0.5" max="6" step="0.25" value="2.25" ${isLine ? '' : 'disabled'}>`)}
-          ${field('Marker size', `<input id="g2MarkerSize" type="range" min="3" max="24" step="1" value="9" ${hasMarkers ? '' : 'disabled'}>`)}
-        </div>
-      </section>
+      ${editorSection('layout', 'Layout', layoutBody, true)}
+      ${editorSection('palette', 'Colors', paletteBody, true)}
+      ${editorSection('objects', 'Objects', objectsBody, true)}
+      ${editorSection('marks', 'Marks', marksBody, false)}
       ${(isSpatialCard || isAnalysisCard) ? spatialEditorHtml(plot, isSpatialCard, isAnalysisCard) : ''}
       <section class="g2-editor-actions">
         <button type="button" id="g2Apply">Apply</button>
@@ -226,10 +243,23 @@
     bindEditorEvents();
   }
 
+  function editorSection(key, title, content, defaultOpen = true) {
+    const isOpen = state.sectionOpen[key] ?? defaultOpen;
+    return `
+      <details class="g2-editor-section g2-collapsible" data-section-key="${key}" ${isOpen ? 'open' : ''}>
+        <summary>
+          <span>${escapeHtml(title)}</span>
+          <span class="g2-section-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="g2-section-content">${content}</div>
+      </details>
+    `;
+  }
+
   function field(label, control) { return `<div class="g2-field"><label>${label}</label>${control}</div>`; }
 
   function paletteButtons(plot) {
-    const active = plot._g2PaletteName || '색각 안전';
+    const active = plot._g2PaletteName || 'Pastel · Paper';
     return Object.entries(PALETTES).map(([name, colors]) => {
       const swatches = colors.slice(0, 6).map((color) => `<span style="background:${color}"></span>`).join('');
       return `
@@ -410,7 +440,7 @@
   }
 
   function objectColor(plot, target) {
-    const palette = PALETTES[plot._g2PaletteName || '색각 안전'] || PALETTES['색각 안전'];
+    const palette = PALETTES[plot._g2PaletteName || 'Pastel · Paper'] || PALETTES['Pastel · Paper'];
     const trace = plot.data?.[target.traceIndex];
     const fallback = palette[target.traceIndex % palette.length] || '#2563EB';
     if (!trace) return fallback;
@@ -501,24 +531,57 @@
     const science = window.G2ScienceSettings || {};
     const stationText = science.stationText || stationsFromPlot(plot);
     const rings = Array.isArray(science.ringDistances) ? science.ringDistances.join(', ') : '25, 50, 100';
-    const interval = Number(science.contourInterval || 25);
+    const interval = Number(science.contourInterval || 10);
+    const contourMin = science.contourMin == null ? '' : science.contourMin;
+    const contourMax = science.contourMax == null ? '' : science.contourMax;
+    const contourPower = Number(science.contourPower || 2);
+    const contourResolution = Number(science.contourResolution || 96);
+    const contourPadding = Number(science.contourPadding || 28);
+    const contourLineColor = science.contourLineColor || '#E89A8A';
+    const contourLineWidth = Number(science.contourLineWidth || 1.35);
+    const contourSmoothing = Number(science.contourSmoothing ?? 1);
     const regionCount = Number(science.regionCount || 3);
+    const ellipseScale = Number(science.pcaEllipseScale || 2.2);
+
     const spatialFields = isSpatial ? `
-        ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="서울,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
-        <div class="g2-editor-grid two">
-          ${field('Ring distances (km)', `<input id="g2Rings" type="text" value="${escapeHtml(rings)}">`)}
-          ${field('Contour interval (km)', `<input id="g2ContourInterval" type="number" min="1" step="1" value="${interval}">`)}
-        </div>
-      ` : '';
-    const analysisFields = isAnalysis ? field('Automatic PCA regions', `<input id="g2RegionCount" type="number" min="2" max="6" step="1" value="${regionCount}">`) : '';
-    return `
-      <section class="g2-editor-section g2-map-editor">
-        <h3>${isSpatial ? 'Map & spatial analysis' : 'PCA analysis'}</h3>
-        ${spatialFields}
-        ${analysisFields}
-        <p class="g2-help">${isSpatial ? '거리 링은 지정한 반경(km)을 표시하고, 거리 등고선은 관측점까지의 최근접 거리장을 km 단위로 계산합니다. 값을 바꾼 뒤 Regenerate를 누르세요.' : '영역 수를 바꾼 뒤 Regenerate를 누르면 PCA 점수 공간에서 k-means 영역을 다시 계산합니다.'}</p>
-      </section>
-    `;
+      ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="서울,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
+      <div class="g2-editor-grid two">
+        ${field('Distance rings (km)', `<input id="g2Rings" type="text" value="${escapeHtml(rings)}">`)}
+        ${field('Contour interval', `<input id="g2ContourInterval" type="number" min="0.1" step="0.5" value="${interval}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('Contour min', `<input id="g2ContourMin" type="number" step="0.5" placeholder="Auto" value="${escapeHtml(contourMin)}">`)}
+        ${field('Contour max', `<input id="g2ContourMax" type="number" step="0.5" placeholder="Auto" value="${escapeHtml(contourMax)}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('IDW power', `<input id="g2ContourPower" type="number" min="0.25" max="8" step="0.25" value="${contourPower}">`)}
+        ${field('Grid resolution', `<input id="g2ContourResolution" type="number" min="36" max="180" step="4" value="${contourResolution}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('Outer padding (km)', `<input id="g2ContourPadding" type="number" min="0" step="2" value="${contourPadding}">`)}
+        ${field('Line width', `<input id="g2ContourLineWidth" type="number" min="0.4" max="6" step="0.1" value="${contourLineWidth}">`)}
+      </div>
+      <div class="g2-editor-grid two">
+        ${field('Contour color', `<input id="g2ContourLineColor" type="color" value="${escapeHtml(contourLineColor)}">`)}
+        ${field('Smoothing', `<input id="g2ContourSmoothing" type="range" min="0" max="1.3" step="0.1" value="${contourSmoothing}">`)}
+      </div>
+      <p class="g2-help">값 보간 등고선은 관측점 값으로 IDW 보간을 수행합니다. Interval을 줄이면 첫 번째 참고 이미지처럼 등고선이 촘촘해지고, Power를 높이면 각 관측점의 영향이 더 국소적으로 나타납니다.</p>
+    ` : '';
+
+    const analysisFields = isAnalysis ? `
+      <div class="g2-editor-grid two">
+        ${field('PCA groups', `<input id="g2RegionCount" type="number" min="2" max="6" step="1" value="${regionCount}">`)}
+        ${field('Group ellipse size (σ)', `<input id="g2PcaEllipseScale" type="number" min="0.5" max="5" step="0.1" value="${ellipseScale}">`)}
+      </div>
+      <p class="g2-help">PCA 점수 그래프에서 k-means 그룹을 자동 구분하고, 두 번째 참고 이미지의 영역 표현처럼 각 그룹을 파스텔 타원으로 감싸 표시합니다.</p>
+    ` : '';
+
+    return editorSection(
+      'science',
+      isSpatial ? 'GEO · Contour' : 'PCA · Groups',
+      `${spatialFields}${analysisFields}`,
+      true
+    );
   }
 
   function bindEditorEvents() {
@@ -528,6 +591,12 @@
 
     panel.querySelector('#g2Apply')?.addEventListener('click', applyEditor);
     panel.querySelector('#g2Regenerate')?.addEventListener('click', () => document.querySelector('#generateBtn')?.click());
+
+    panel.querySelectorAll('details[data-section-key]').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        state.sectionOpen[details.dataset.sectionKey] = details.open;
+      });
+    });
 
     panel.querySelectorAll('.g2-palette-card').forEach((button) => {
       button.addEventListener('click', () => {
@@ -575,7 +644,7 @@
       if (control.id === 'g2SelectedObjectColor') return;
       const eventName = control.tagName === 'TEXTAREA' ? 'change' : 'input';
       control.addEventListener(eventName, () => {
-        if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2RegionCount')) {
+        if (control.matches('#g2Stations,#g2Rings,#g2ContourInterval,#g2ContourMin,#g2ContourMax,#g2ContourPower,#g2ContourResolution,#g2ContourPadding,#g2ContourLineColor,#g2ContourLineWidth,#g2ContourSmoothing,#g2RegionCount,#g2PcaEllipseScale')) {
           writeScienceSettings();
           return;
         }
@@ -616,8 +685,8 @@
 
     try { Plotly.relayout(plot, layoutUpdate); } catch (_) {}
 
-    const paletteName = plot._g2PaletteName || '색각 안전';
-    const palette = PALETTES[paletteName] || PALETTES['색각 안전'];
+    const paletteName = plot._g2PaletteName || 'Pastel · Paper';
+    const palette = PALETTES[paletteName] || PALETTES['Pastel · Paper'];
     const lineWidth = finite(panel.querySelector('#g2LineWidth')?.value, 2.25);
     const markerSize = finite(panel.querySelector('#g2MarkerSize')?.value, 9);
 
@@ -684,17 +753,46 @@
     const panel = document.querySelector('#g2EditorPanel');
     if (!panel) return;
     window.G2ScienceSettings = window.G2ScienceSettings || {};
+    const settings = window.G2ScienceSettings;
+
     const stationText = panel.querySelector('#g2Stations')?.value;
-    if (typeof stationText === 'string') window.G2ScienceSettings.stationText = stationText;
+    if (typeof stationText === 'string') settings.stationText = stationText;
+
     const rings = panel.querySelector('#g2Rings')?.value;
     if (typeof rings === 'string') {
       const parsed = rings.split(/[;,\s]+/).map(Number).filter((v) => Number.isFinite(v) && v > 0).sort((a,b)=>a-b);
-      if (parsed.length) window.G2ScienceSettings.ringDistances = parsed;
+      if (parsed.length) settings.ringDistances = parsed;
     }
+
     const interval = Number(panel.querySelector('#g2ContourInterval')?.value);
-    if (Number.isFinite(interval) && interval > 0) window.G2ScienceSettings.contourInterval = interval;
+    if (Number.isFinite(interval) && interval > 0) settings.contourInterval = interval;
+
+    settings.contourMin = nullableInputNumber(panel.querySelector('#g2ContourMin'));
+    settings.contourMax = nullableInputNumber(panel.querySelector('#g2ContourMax'));
+
+    const power = Number(panel.querySelector('#g2ContourPower')?.value);
+    if (Number.isFinite(power)) settings.contourPower = Math.min(8, Math.max(0.25, power));
+
+    const resolution = Number(panel.querySelector('#g2ContourResolution')?.value);
+    if (Number.isFinite(resolution)) settings.contourResolution = Math.min(180, Math.max(36, Math.round(resolution)));
+
+    const padding = Number(panel.querySelector('#g2ContourPadding')?.value);
+    if (Number.isFinite(padding)) settings.contourPadding = Math.max(0, padding);
+
+    const lineColor = panel.querySelector('#g2ContourLineColor')?.value;
+    if (/^#[0-9a-f]{6}$/i.test(String(lineColor || ''))) settings.contourLineColor = lineColor.toUpperCase();
+
+    const lineWidth = Number(panel.querySelector('#g2ContourLineWidth')?.value);
+    if (Number.isFinite(lineWidth)) settings.contourLineWidth = Math.min(6, Math.max(0.4, lineWidth));
+
+    const smoothing = Number(panel.querySelector('#g2ContourSmoothing')?.value);
+    if (Number.isFinite(smoothing)) settings.contourSmoothing = Math.min(1.3, Math.max(0, smoothing));
+
     const regionCount = Number(panel.querySelector('#g2RegionCount')?.value);
-    if (Number.isFinite(regionCount)) window.G2ScienceSettings.regionCount = Math.min(6, Math.max(2, Math.round(regionCount)));
+    if (Number.isFinite(regionCount)) settings.regionCount = Math.min(6, Math.max(2, Math.round(regionCount)));
+
+    const ellipseScale = Number(panel.querySelector('#g2PcaEllipseScale')?.value);
+    if (Number.isFinite(ellipseScale)) settings.pcaEllipseScale = Math.min(5, Math.max(0.5, ellipseScale));
   }
 
   function stationsFromPlot(plot) {
@@ -769,6 +867,12 @@
       timer = setTimeout(() => fn(...args), wait);
     };
   }
+  function nullableInputNumber(input) {
+    if (!input || input.value === '') return null;
+    const value = Number(input.value);
+    return Number.isFinite(value) ? value : null;
+  }
+
   function finite(value, fallback) { const n = Number(value); return Number.isFinite(n) ? n : fallback; }
   function stripHtml(value) { const div = document.createElement('div'); div.innerHTML = String(value || ''); return div.textContent || div.innerText || ''; }
   function escapeHtml(value) { return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
