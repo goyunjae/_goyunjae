@@ -4,7 +4,7 @@
   const ALL = "전체";
   const previous = window.chartSpecs;
   const themes = [
-    ["Paper", ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E"]],
+    ["Pastel Paper", ["#9EC5E6", "#F2B8B5", "#B7D7B0", "#C9B7DD", "#F4D49A", "#A8D8D8", "#E6B8C8", "#B8C6D9"]],
     ["Ocean", ["#1CA7A8", "#76D7C4", "#247BA0", "#173F5F", "#F6D55C", "#ED553B"]],
     ["Forest", ["#2E7D32", "#81C784", "#A5D6A7", "#546E7A", "#F9A825", "#D84315"]],
     ["Sunset", ["#FF6B6B", "#FFD166", "#F4A261", "#2A9D8F", "#264653", "#8E7AD8"]],
