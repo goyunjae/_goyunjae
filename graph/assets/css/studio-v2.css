@@ -442,3 +442,71 @@ body[data-g2-view="data"] .sheet-scroll { max-height: calc(100vh - 230px); }
 }
 
 .g2-studio-v2 .plot.g2-object-clickable { cursor: crosshair; }
+
+/* Collapsible Figure Editor sections */
+.g2-collapsible {
+  padding: 0 !important;
+}
+.g2-collapsible > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  padding: 11px 14px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  background: #fff;
+}
+.g2-collapsible > summary::-webkit-details-marker { display: none; }
+.g2-collapsible > summary > span:first-child {
+  color: #253247;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: -.01em;
+}
+.g2-section-chevron {
+  color: #91a0b3;
+  font-size: 15px;
+  transition: transform .16s ease;
+}
+.g2-collapsible[open] > summary .g2-section-chevron {
+  transform: rotate(180deg);
+}
+.g2-collapsible > summary:hover {
+  background: #fbfcfe;
+}
+.g2-section-content {
+  display: grid;
+  gap: 11px;
+  padding: 0 14px 14px;
+}
+.g2-collapsible:not([open]) .g2-section-content { display: none; }
+
+/* Softer pastel editor visual language */
+.g2-palette-card {
+  background: #fffdfd;
+  border-color: #e3e8ef;
+}
+.g2-palette-card.active {
+  border-color: #9eb7d6;
+  outline-color: rgba(158,183,214,.22);
+  background: #f8fbff;
+}
+.g2-object-row.active {
+  border-color: #b7cbe3;
+  background: #f3f8fd;
+  color: #526b86;
+}
+.g2-object-properties {
+  background: #fffefe;
+}
+.g2-editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(7px);
+  border-top: 1px solid #e7ecf2;
+}
