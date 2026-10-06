@@ -2,7 +2,7 @@
   if (typeof window.chartSpecs !== "function") return;
 
   const previous = window.chartSpecs;
-  const palette = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#7C3AED", "#0F766E", "#BE123C", "#475569"];
+  const palette = ["#9EC5E6", "#F2B8B5", "#B7D7B0", "#C9B7DD", "#F4D49A", "#A8D8D8", "#E6B8C8", "#B8C6D9", "#C7D8A6", "#E7C3A8"];
   const groupLabels = {
     BAR: "비교",
     LINE: "추이",
