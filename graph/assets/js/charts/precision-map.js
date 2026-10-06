@@ -338,7 +338,15 @@
   function mapNoData(resolved, message = 'GEO 데이터에 사용할 정확한 좌표가 없습니다. Station coordinates에 이름,위도,경도를 입력하세요.') {
     const missingText = resolved?.missing?.length ? `<br><span style="font-size:10px">좌표 없음: ${resolved.missing.map(escapeHtml).join(', ')}</span>` : '';
     return {
-      traces: [],
+      traces: [{
+        type: 'scattermap',
+        mode: 'markers',
+        lon: [127.8],
+        lat: [36.2],
+        marker: { size: 1, opacity: 0 },
+        hoverinfo: 'skip',
+        showlegend: false,
+      }],
       layout: {
         map: { style: window.G2ScienceSettings?.mapStyle || 'carto-voyager', center: { lat: 36.2, lon: 127.8 }, zoom: 5.2 },
         margin: { l: 20, r: 20, t: 60, b: 30 },
