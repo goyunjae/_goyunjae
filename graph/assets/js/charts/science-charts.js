@@ -116,12 +116,13 @@
     const step = clampNumber(settings.contourInterval, 25, 1, 10000);
     const field = distanceField(projected, 76, step * 2);
     const maxDistance = Math.max(...field.z.flat());
+    const contourEnd = Math.max(step * 2, Math.ceil(maxDistance / step) * step);
     return {
       traces: [
         {
           type: 'contour', x: field.x, y: field.y, z: field.z,
           autocontour: false,
-          contours: { start: step, end: Math.ceil(maxDistance / step) * step, size: step, coloring: 'lines', showlabels: true, labelfont: { size: 10, color: '#334155' } },
+          contours: { start: step, end: contourEnd, size: step, coloring: 'lines', showlabels: true, labelfont: { size: 10, color: '#334155' } },
           line: { width: 1.4, smoothing: 0.7 },
           colorscale: [[0, '#DCEAF7'], [0.5, '#4C78A8'], [1, '#7A3E9D']],
           showscale: false,
