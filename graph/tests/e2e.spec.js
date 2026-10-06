@@ -83,3 +83,58 @@ test('publication palette presets and manual colors work in the real browser', a
 
   expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
 });
+
+
+test('Grapher-style object manager edits individual chart objects', async ({ page }) => {
+  test.setTimeout(60000);
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
+
+  await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
+
+  await page.selectOption('#chartGroup', 'BAR');
+  await page.click('#generateBtn');
+  await page.waitForSelector('.chart-card.is-selected .plot .barlayer');
+
+  const objectRows = page.locator('.g2-object-row');
+  await expect(objectRows.first()).toBeVisible();
+  expect(await objectRows.count()).toBeGreaterThan(3);
+
+  const itemRow = page.locator('.g2-object-row[data-kind="point"][data-trace-index="0"][data-point-index="1"]');
+  await expect(itemRow).toBeVisible();
+  await itemRow.click();
+
+  const selectedColor = page.locator('#g2SelectedObjectColor');
+  await expect(selectedColor).toHaveAttribute('data-kind', 'point');
+  await expect(selectedColor).toHaveAttribute('data-point-index', '1');
+
+  await selectedColor.evaluate((input) => {
+    input.value = '#B423A8';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+
+  const editedBarColors = await page.locator('.chart-card.is-selected .plot').evaluate((plot) => plot.data[0].marker?.color);
+  expect(Array.isArray(editedBarColors)).toBeTruthy();
+  expect(String(editedBarColors[1]).toUpperCase()).toBe('#B423A8');
+
+  const bars = page.locator('.chart-card.is-selected .plot .barlayer .point');
+  expect(await bars.count()).toBeGreaterThan(2);
+  await bars.nth(2).click({ force: true });
+  await page.waitForTimeout(150);
+
+  await expect(page.locator('#g2SelectedObjectColor')).toHaveAttribute('data-kind', 'point');
+  await expect(page.locator('#g2SelectedObjectColor')).toHaveAttribute('data-point-index', '2');
+
+  await page.locator('#g2SelectedObjectColor').evaluate((input) => {
+    input.value = '#18794E';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+
+  const directClickColors = await page.locator('.chart-card.is-selected .plot').evaluate((plot) => plot.data[0].marker?.color);
+  expect(String(directClickColors[2]).toUpperCase()).toBe('#18794E');
+
+  expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
+});
