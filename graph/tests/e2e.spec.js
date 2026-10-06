@@ -344,3 +344,45 @@ test('precision GEO uses MapLibre tile maps and geodesic overlays', async ({ pag
 
   expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
 });
+
+
+test('GEO coordinates can match A사업 B사업 C사업 row names directly', async ({ page }) => {
+  test.setTimeout(90000);
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
+
+  await page.goto('http://127.0.0.1:8000/graph/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.Plotly && typeof window.Plotly.newPlot === 'function');
+
+  // Keep the default table orientation:
+  // columns = 2024/2025/2026, rows = A사업/B사업/C사업.
+  await page.selectOption('#chartGroup', 'GEO');
+  await page.click('#generateBtn');
+  await expect(page.locator('.chart-card')).toHaveCount(5, { timeout: 30000 });
+
+  const firstCard = page.locator('.chart-card', { hasText: '정밀 관측점 지도' });
+  await firstCard.click();
+  await expect(page.locator('#g2Stations')).toBeVisible();
+
+  await page.locator('#g2Stations').fill([
+    'A사업,37.5665,126.978',
+    'B사업,35.1796,129.0756',
+    'C사업,35.8714,128.6014',
+  ].join('\n'));
+  await page.locator('#g2Regenerate').click();
+  await expect(page.locator('.chart-card')).toHaveCount(5, { timeout: 30000 });
+
+  const state = await page.locator('.chart-card', { hasText: '정밀 관측점 지도' }).locator('.plot').evaluate((plot) => ({
+    names: plot.data[0]?.text || [],
+    lat: plot.data[0]?.lat || [],
+    lon: plot.data[0]?.lon || [],
+    values: (plot.data[0]?.customdata || []).map((row) => row?.[1]),
+  }));
+
+  expect(state.names).toEqual(['A사업','B사업','C사업']);
+  expect(Number(state.lat[0])).toBeCloseTo(37.5665, 4);
+  expect(Number(state.lon[0])).toBeCloseTo(126.9780, 4);
+  expect(Number(state.values[0])).toBe(435);
+
+  expect(pageErrors, 'page errors: ' + pageErrors.join('\n')).toEqual([]);
+});

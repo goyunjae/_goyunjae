@@ -691,7 +691,8 @@
         ${field('Bearing', `<input id="g2MapBearing" type="number" min="-180" max="180" step="5" value="${mapBearing}">`)}
         ${field('Pitch', `<input id="g2MapPitch" type="number" min="0" max="60" step="5" value="${mapPitch}">`)}
       </div>
-      ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="서울,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
+      ${field('Station coordinates', `<textarea id="g2Stations" spellcheck="false" placeholder="A사업,37.5665,126.9780">${escapeHtml(stationText)}</textarea>`)}
+      <p class="g2-help">좌표명은 Grid Data의 <b>행 이름(A사업 등)</b> 또는 <b>열 제목(서울 등)</b>과 일치하면 됩니다. 둘 중 좌표와 더 많이 일치하는 방향을 자동으로 사용합니다.</p>
       <div class="g2-editor-grid two">
         ${field('Distance rings (km)', `<input id="g2Rings" type="text" value="${escapeHtml(rings)}">`)}
         ${field('Contour interval', `<input id="g2ContourInterval" type="number" min="0.1" step="0.5" value="${interval}">`)}
