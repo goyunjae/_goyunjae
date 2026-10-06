@@ -15,6 +15,13 @@
       marks: false,
       science: true,
     },
+    objectSectionOpen: {
+      plot: true,
+      symbol: true,
+      labels: false,
+      line: false,
+      fill: false,
+    },
   };
 
   const PALETTES = {
@@ -321,43 +328,165 @@
 
   function selectedObjectPropertiesHtml(plot) {
     const target = normalizeSelectedObject(plot, state.selectedObject || plot._g2SelectedObject);
-    if (!target) return '<p class="g2-help">왼쪽 Objects 목록이나 그래프 개체를 클릭하세요.</p>';
+    if (!target) return '<p class="g2-help">Objects 목록이나 그래프 개체를 클릭하세요.</p>';
     const trace = plot.data?.[target.traceIndex];
     if (!trace) return '<p class="g2-help">선택한 개체를 찾을 수 없습니다.</p>';
 
     const color = objectColor(plot, target);
-    const kindText = target.kind === 'point' ? '개별 항목' : '시리즈 / 레이어';
-    const detail = target.kind === 'point'
-      ? `Trace ${target.traceIndex + 1} · Item ${Number(target.pointIndex) + 1}`
-      : `Trace ${target.traceIndex + 1} · ${trace.type || 'plot'}`;
+    const objectTitle = target.kind === 'point'
+      ? `Point - ${Number(target.pointIndex) + 1}`
+      : `Plot - ${target.traceIndex + 1}`;
+    const traceLabel = target.label || trace.name || objectTitle;
 
-    return `
-      <div class="g2-object-property-head">
-        <div>
-          <strong>${escapeHtml(target.label)}</strong>
-          <span>${kindText} · ${escapeHtml(detail)}</span>
-        </div>
-        <button type="button" id="g2ResetObjectColor" class="g2-mini-button">Reset</button>
+    const supportsMarker = Boolean(trace.marker) || String(trace.mode || '').includes('markers');
+    const supportsLine = Boolean(trace.line) || String(trace.mode || '').includes('lines') || trace.type === 'contour';
+    const supportsFill = Boolean(trace.fill && trace.fill !== 'none') ||
+      ['bar','waterfall','funnel','pie','treemap','sunburst'].includes(trace.type);
+
+    const plotContent = `
+      <div class="g2-property-row">
+        <span>Name</span>
+        <strong>${escapeHtml(traceLabel)}</strong>
       </div>
-      <label class="g2-object-color-control">
+      <div class="g2-property-row">
+        <span>Type</span>
+        <strong>${escapeHtml(trace.type || 'plot')}</strong>
+      </div>
+      <label class="g2-property-slider">
+        <span>Opacity</span>
+        <input id="g2ObjectOpacity" type="range" min="0.1" max="1" step="0.05" value="${finite(trace.opacity, 1)}">
+      </label>
+    `;
+
+    const symbolContent = supportsMarker ? `
+      <label class="g2-property-color-row">
+        <span>Color</span>
         <input
           id="g2SelectedObjectColor"
-          class="g2-color-input"
+          class="g2-property-color-input"
           type="color"
           value="${color}"
           data-kind="${target.kind}"
           data-trace-index="${target.traceIndex}"
           ${target.pointIndex == null ? '' : `data-point-index="${target.pointIndex}"`}
-          aria-label="${escapeHtml(target.label)} 색상"
+          aria-label="${escapeHtml(traceLabel)} 색상"
         >
-        <span class="g2-color-chip large" style="background:${color}"></span>
-        <span>
-          <b>Color</b>
-          <code>${color.toUpperCase()}</code>
-        </span>
+        <code>${color.toUpperCase()}</code>
       </label>
-      <p class="g2-help">${objectHelp(trace, target)}</p>
+      <label class="g2-property-slider">
+        <span>Size</span>
+        <input id="g2ObjectMarkerSize" type="range" min="2" max="30" step="1" value="${markerSizeFor(trace, target)}">
+      </label>
+    ` : '<p class="g2-help">이 개체에는 Symbol 속성이 없습니다.</p>';
+
+    const labelsContent = `
+      <label class="g2-check">
+        <input id="g2ObjectLabels" type="checkbox" ${trace.textposition === 'none' ? '' : 'checked'}>
+        Show labels
+      </label>
+      <div class="g2-property-row">
+        <span>Position</span>
+        <select id="g2ObjectLabelPosition">
+          ${labelPositionOptions(trace.textposition || 'top center')}
+        </select>
+      </div>
     `;
+
+    const lineContent = supportsLine ? `
+      <label class="g2-property-color-row">
+        <span>Line color</span>
+        <input id="g2ObjectLineColor" class="g2-property-color-input" type="color" value="${lineColorFor(trace, color)}">
+        <code>${lineColorFor(trace, color).toUpperCase()}</code>
+      </label>
+      <label class="g2-property-slider">
+        <span>Width</span>
+        <input id="g2ObjectLineWidth" type="range" min="0.4" max="8" step="0.2" value="${finite(trace.line?.width, 2)}">
+      </label>
+    ` : '<p class="g2-help">이 개체에는 Line 속성이 없습니다.</p>';
+
+    const fillContent = supportsFill ? `
+      <label class="g2-property-color-row">
+        <span>Fill color</span>
+        <input id="g2ObjectFillColor" class="g2-property-color-input" type="color" value="${fillColorFor(trace, color)}">
+        <code>${fillColorFor(trace, color).toUpperCase()}</code>
+      </label>
+      <label class="g2-property-slider">
+        <span>Fill opacity</span>
+        <input id="g2ObjectFillOpacity" type="range" min="0.05" max="1" step="0.05" value="${fillOpacityFor(trace)}">
+      </label>
+    ` : '<p class="g2-help">이 개체에는 Fill 속성이 없습니다.</p>';
+
+    return `
+      <div class="g2-property-manager">
+        <div class="g2-property-manager-head">
+          <div>
+            <strong>${escapeHtml(objectTitle)}</strong>
+            <span>${escapeHtml(traceLabel)}</span>
+          </div>
+          <button type="button" id="g2ResetObjectColor" class="g2-mini-button">Reset</button>
+        </div>
+
+        ${objectPropertySection('plot', 'Plot', plotContent, true)}
+        ${objectPropertySection('symbol', 'Symbol', symbolContent, true)}
+        ${objectPropertySection('labels', 'Labels', labelsContent, false)}
+        ${objectPropertySection('line', 'Line', lineContent, false)}
+        ${objectPropertySection('fill', 'Fill', fillContent, false)}
+      </div>
+    `;
+  }
+
+  function objectPropertySection(key, title, content, defaultOpen = false) {
+    const open = state.objectSectionOpen[key] ?? defaultOpen;
+    return `
+      <details class="g2-property-section" data-object-section-key="${key}" ${open ? 'open' : ''}>
+        <summary>
+          <span class="g2-property-caret">▾</span>
+          <strong>${escapeHtml(title)}</strong>
+        </summary>
+        <div class="g2-property-section-body">${content}</div>
+      </details>
+    `;
+  }
+
+  function markerSizeFor(trace, target) {
+    const size = trace.marker?.size;
+    if (Array.isArray(size) && target.kind === 'point') {
+      const value = Number(size[target.pointIndex]);
+      return Number.isFinite(value) ? value : 9;
+    }
+    return Number.isFinite(Number(size)) ? Number(size) : 9;
+  }
+
+  function lineColorFor(trace, fallback) {
+    const color = trace.line?.color;
+    return /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : fallback;
+  }
+
+  function fillColorFor(trace, fallback) {
+    const raw = trace.fillcolor;
+    if (/^#[0-9a-f]{6}$/i.test(String(raw || ''))) return raw;
+    const rgbaMatch = String(raw || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgbaMatch) {
+      return '#' + rgbaMatch.slice(1,4).map((v) => Number(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+    }
+    return fallback;
+  }
+
+  function fillOpacityFor(trace) {
+    const raw = String(trace.fillcolor || '');
+    const match = raw.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/i);
+    return match ? Math.min(1, Math.max(0.05, Number(match[1]) || 0.25)) : 0.25;
+  }
+
+  function labelPositionOptions(current) {
+    const positions = [
+      ['top center','Top'],
+      ['middle center','Center'],
+      ['bottom center','Bottom'],
+      ['top right','Top right'],
+      ['top left','Top left'],
+    ];
+    return positions.map(([value,label]) => `<option value="${value}" ${value === current ? 'selected' : ''}>${label}</option>`).join('');
   }
 
   function objectHelp(trace, target) {
@@ -598,6 +727,12 @@
       });
     });
 
+    panel.querySelectorAll('details[data-object-section-key]').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        state.objectSectionOpen[details.dataset.objectSectionKey] = details.open;
+      });
+    });
+
     panel.querySelectorAll('.g2-palette-card').forEach((button) => {
       button.addEventListener('click', () => {
         const name = button.dataset.palette;
@@ -629,11 +764,52 @@
       };
       const color = input.value.toUpperCase();
       setObjectColor(plot, target, color);
-      input.closest('.g2-object-color-control')?.querySelector('.g2-color-chip')?.style.setProperty('background', color);
-      const code = input.closest('.g2-object-color-control')?.querySelector('code');
+      const code = input.closest('.g2-property-color-row')?.querySelector('code');
       if (code) code.textContent = color;
       const activeRow = panel.querySelector('.g2-object-row.active .g2-object-color');
       if (activeRow) activeRow.style.background = color;
+    });
+
+    panel.querySelector('#g2ObjectOpacity')?.addEventListener('input', (event) => {
+      updateSelectedTraceProperty(plot, 'opacity', Number(event.currentTarget.value));
+    });
+
+    panel.querySelector('#g2ObjectMarkerSize')?.addEventListener('input', (event) => {
+      updateSelectedObjectMarkerSize(plot, state.selectedObject || plot._g2SelectedObject, Number(event.currentTarget.value));
+    });
+
+    panel.querySelector('#g2ObjectLabels')?.addEventListener('change', (event) => {
+      updateSelectedTraceProperty(plot, 'textposition', event.currentTarget.checked
+        ? (panel.querySelector('#g2ObjectLabelPosition')?.value || 'top center')
+        : 'none');
+    });
+
+    panel.querySelector('#g2ObjectLabelPosition')?.addEventListener('change', (event) => {
+      if (panel.querySelector('#g2ObjectLabels')?.checked !== false) {
+        updateSelectedTraceProperty(plot, 'textposition', event.currentTarget.value);
+      }
+    });
+
+    panel.querySelector('#g2ObjectLineColor')?.addEventListener('input', (event) => {
+      updateSelectedTraceProperty(plot, 'line.color', event.currentTarget.value.toUpperCase());
+      const code = event.currentTarget.closest('.g2-property-color-row')?.querySelector('code');
+      if (code) code.textContent = event.currentTarget.value.toUpperCase();
+    });
+
+    panel.querySelector('#g2ObjectLineWidth')?.addEventListener('input', (event) => {
+      updateSelectedTraceProperty(plot, 'line.width', Number(event.currentTarget.value));
+    });
+
+    panel.querySelector('#g2ObjectFillColor')?.addEventListener('input', (event) => {
+      const opacity = Number(panel.querySelector('#g2ObjectFillOpacity')?.value || 0.25);
+      updateSelectedTraceProperty(plot, 'fillcolor', hexToRgba(event.currentTarget.value, opacity));
+      const code = event.currentTarget.closest('.g2-property-color-row')?.querySelector('code');
+      if (code) code.textContent = event.currentTarget.value.toUpperCase();
+    });
+
+    panel.querySelector('#g2ObjectFillOpacity')?.addEventListener('input', (event) => {
+      const color = panel.querySelector('#g2ObjectFillColor')?.value || '#9EC5E6';
+      updateSelectedTraceProperty(plot, 'fillcolor', hexToRgba(color, Number(event.currentTarget.value)));
     });
 
     panel.querySelector('#g2ResetObjectColor')?.addEventListener('click', () => {
@@ -654,6 +830,34 @@
       if (control.tagName === 'SELECT') control.addEventListener('change', applyEditor);
     });
   }
+
+  function updateSelectedTraceProperty(plot, property, value) {
+    const target = normalizeSelectedObject(plot, state.selectedObject || plot._g2SelectedObject);
+    if (!target || !window.Plotly) return;
+    try { Plotly.restyle(plot, { [property]: value }, [target.traceIndex]); } catch (_) {}
+  }
+
+  function updateSelectedObjectMarkerSize(plot, target, size) {
+    const normalized = normalizeSelectedObject(plot, target);
+    if (!normalized || !Number.isFinite(size) || !window.Plotly) return;
+    const trace = plot.data?.[normalized.traceIndex];
+    if (!trace) return;
+
+    if (normalized.kind === 'point') {
+      const count = editablePointCount(trace);
+      const current = trace.marker?.size;
+      const sizes = Array.from({ length: count }, (_, i) => {
+        if (Array.isArray(current) && Number.isFinite(Number(current[i]))) return Number(current[i]);
+        if (Number.isFinite(Number(current))) return Number(current);
+        return 9;
+      });
+      sizes[normalized.pointIndex] = size;
+      try { Plotly.restyle(plot, { 'marker.size': [sizes] }, [normalized.traceIndex]); } catch (_) {}
+    } else {
+      try { Plotly.restyle(plot, { 'marker.size': size }, [normalized.traceIndex]); } catch (_) {}
+    }
+  }
+
 
   function applyEditor() {
     const plot = state.selectedPlot;
