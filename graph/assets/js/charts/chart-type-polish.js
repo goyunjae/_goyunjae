@@ -178,10 +178,10 @@
       addValueText(next, values, next.orientation === "h" ? "outside" : "auto");
     }
     if (["scatter", "scatterpolar", "scattergeo"].includes(next.type)) {
-      next.line = { ...(next.line || {}), color, width: next.line?.width || 2.4 };
-      next.marker = { ...(next.marker || {}), color: colorsFor(next, index), size: next.marker?.size || 9, line: { color: "#ffffff", width: 1 } };
-      if (next.mode && !String(next.mode).includes("text")) next.mode = `${next.mode}+text`;
-      addValueText(next, values, next.type === "scattergeo" ? "top center" : "top center");
+      next.line = { ...(next.line || {}), color, width: next.line?.width || 2.2 };
+      next.marker = { ...(next.marker || {}), color: colorsFor(next, index), size: next.marker?.size || 8, line: { color: "#ffffff", width: 0.9 } };
+      // Publication default: do not force value labels onto every point.
+      // Charts that intentionally define text keep their own labels.
     }
     if (next.type === "pie") {
       next.marker = { ...(next.marker || {}), colors: pieColors(next.marker?.colors), line: { color: "#ffffff", width: 2 } };
@@ -205,7 +205,7 @@
   }
 
   function addValueText(trace, values, position) {
-    if (!values || values.length === 0) return;
+    if (!values || values.length === 0 || values.length > 12) return;
     trace.text = values.map(format);
     trace.textposition = position;
     trace.textfont = { color: "#21313A", size: 11, ...(trace.textfont || {}) };
