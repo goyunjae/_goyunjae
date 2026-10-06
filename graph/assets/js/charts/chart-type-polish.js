@@ -79,8 +79,7 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
-    injectStyle();
-    installThemePicker();
+    // Keep chart definitions and default styling; Studio v2 owns theme controls.
     setTimeout(cleanSelect, 20);
   });
 
