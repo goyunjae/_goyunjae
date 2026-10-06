@@ -101,3 +101,36 @@ Grapher의 Object Manager / Property Manager 흐름을 참고해 그래프 내�
 - Reset을 누르면 해당 개체의 수동 색상만 해제하고 현재 팔레트 색으로 돌아갑니다.
 
 Heatmap, Contour, Choropleth처럼 연속형 스케일을 사용하는 레이어는 개별 셀 대신 Publication palette로 전체 색상 스케일을 관리합니다.
+
+
+## Property Manager UI
+
+오른쪽 Figure editor는 Grapher의 Property Manager 방식처럼 접이식 섹션으로 구성됩니다.
+
+- Layout
+- Colors
+- Objects
+- Marks
+- GEO · Contour 또는 PCA · Groups
+
+Objects에서 특정 plot 또는 point를 선택하면 내부에 Plot / Symbol / Labels / Line / Fill 속성이 각각 접이식으로 표시됩니다.
+
+## GEO 값 보간 등고선
+
+참고 이미지처럼 불규칙하게 배치된 관측점 값을 기준으로 등고선을 생성할 수 있도록 **IDW(Inverse Distance Weighting)** 기반 값 보간 등고선을 추가했습니다.
+
+조절 가능한 항목:
+- contour interval
+- contour minimum / maximum
+- IDW power
+- grid resolution
+- outer padding
+- contour line color
+- line width
+- smoothing
+
+Interval이 작을수록 등고선 간격이 촘촘해집니다. IDW power를 높이면 가까운 관측점의 영향이 더 강해집니다.
+
+## PCA 그룹 표시
+
+PCA score plot은 k-means로 그룹을 자동 구분한 뒤 각 그룹을 공분산 기반 파스텔 타원으로 감싸 표시합니다. 그룹 수와 타원 크기(σ)를 Figure editor에서 조절할 수 있습니다.
